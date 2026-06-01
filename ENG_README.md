@@ -26,7 +26,7 @@ Because centralized platforms are controlling our conversations. Because age, id
 
 - **Core Protocol**: C++ / Rust (TBD)
 - **Network Layer**: libp2p or custom P2P stack
-- **GUI**: C# / Avalonia (cross-platform: Windows / Linux / macOS / IOS / Android)
+- **GUI**: C# / Avalonia (cross-platform: Windows / Linux / macOS / iOS / Android)
 - **AI Assistant**: Lumora integration
 
 
@@ -51,15 +51,15 @@ You don't need to "wait for permission". You just need to run the code.
 
 ## License
 
-Apache 2.0. Use it, modify it, include it in your own projects. Just keep the copyright notice.
+Apache 2.0. Use it, modify it, include it in your own projects. Just keep the [copyright notice](./LICENSE).
 
 
 ## Join Us
 
 This is not a cry for help. It's a call for collaboration.
 
-- **Repository**: [https://github.com/domirus-lumora/Numotirus/tree/main]
-- **Issues**: [https://github.com/domirus-lumora/Numotirus/issues]
-- **Discussions**: [https://discord.com/invite/YYqbVJdsvv] 's dev-numotirus
+- **Repository**: [https://github.com/domirus-lumora/Numotirus/tree/main](https://github.com/domirus-lumora/Numotirus/tree/main)
+- **Issues**: [https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
+- **Discussions**: [Discord #dev-numotirus](https://discord.com/invite/YYqbVJdsvv)
 
 You're not "helping Domirus". You're building a better internet.
