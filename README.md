@@ -6,7 +6,7 @@
 
 Numotirus 不是一个“聊天软件”。它是一个通信协议。没有公司运营服务器，没有平台审核内容，没有年龄限制。你持有密钥，你建立连接，你决定谁可以找到你。
 
-它不是“社交媒体”。它是“社交基础设施”。
+它不是“社交媒体”。它是**社交基础设施**。
 
 
 ## 为什么需要 Numotirus？
@@ -28,16 +28,16 @@ Numotirus 不是一个“聊天软件”。它是一个通信协议。没有公�
 
 - **核心协议**：C++ / Rust（待定）
 - **网络层**：libp2p 或自研 P2P 栈
-- **GUI**：C# / Avalonia（跨平台：Windows / Linux / macOS / IOS / Android）
+- **GUI**：C# / Avalonia（跨平台：Windows / Linux / macOS / iOS / Android）
 - **AI助手**：神霁（Lumora）集成
 
 
 ## 这不是一个人项目
 
-这是开源的。这是社区的。这是你的。
+这是开源的。这是社区的。这是**你的**。
 
-你不需要“注册”，你只需要“下载”。
-你不需要“被审核”，你只需要“持有密钥”。
+你不需要“注册”，你只需要“下载”。  
+你不需要“被审核”，你只需要“持有密钥”。  
 你不需要“等待许可”，你只需要“运行代码”。
 
 
@@ -53,15 +53,15 @@ Numotirus 不是一个“聊天软件”。它是一个通信协议。没有公�
 
 ## 许可证
 
-Apache 2.0。你可以用它、改它、把它用在你的项目里。只需要保留版权声明。
+Apache 2.0。你可以用它、改它、把它用在你的项目里。只需要[保留版权声明](./LICENSE)。
 
 
 ## 加入我们
 
 这不是“求救”。是“召集”。
 
-- [**代码仓库**](https://github.com/domirus-lumora/Numotirus/tree/main)
-- [**Issues**](https://github.com/domirus-lumora/Numotirus/issues)
-- [**讨论**](https://discord.com/invite/YYqbVJdsvv) 中的dev-numotirus频道
+- **代码仓库**：[https://github.com/domirus-lumora/Numotirus](https://github.com/domirus-lumora/Numotirus)
+- **Issues**：[https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
+- **讨论**：Discord 的 `#dev-numotirus` 频道 [点击加入](https://discord.com/invite/YYqbVJdsvv)
 
 你不是在“帮影域”。你是在建一个更好的互联网。
