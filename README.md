@@ -60,8 +60,9 @@ Apache 2.0。你可以用它、改它、把它用在你的项目里。只需要�
 
 这不是“求救”。是“召集”。
 
-- **代码仓库**：[https://github.com/domirus-lumora/Numotirus/tree/main]
-- **Issues**：[https://github.com/domirus-lumora/Numotirus/issues]
-- **讨论**：[https://discord.com/invite/YYqbVJdsvv]中的dev-numotirus频道
+- (**代码仓库**)[https://github.com/domirus-lumora/Numotirus/tree/main]
+- (**Issues**)[https://github.com/domirus-lumora/Numotirus/issues]
+- (**讨论**)[https://discord.com/invite/YYqbVJdsvv]
+  中的dev-numotirus频道
 
 你不是在“帮影域”。你是在建一个更好的互联网。
