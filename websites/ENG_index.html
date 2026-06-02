@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numotirus · Communication Protocol</title>
+    <meta name="description" content="Numotirus is a decentralized communication protocol. Not a platform, not a service. You hold your keys, you build connections.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <div class="container nav-flex">
+            <div class="logo">
+                <img src="images/corvus.png" alt="Corvus" class="logo-icon">
+                Numotirus
+            </div>
+            <div class="nav-links">
+                <a href="#about">About</a>
+                <a href="#qna">QnA</a>
+                <a href="https://github.com/domirus-lumora/Numotirus" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://discord.gg/jbAyBtWw" target="_blank" rel="noopener noreferrer">Discord</a>
+                <a href="index.html" class="lang-switch-btn">中文</a>
+                <button id="darkModeToggle" class="dark-mode-btn">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container hero-content">
+            <div class="hero-text">
+                <div class="badge">🔑 Not a chat app · A communication protocol</div>
+                <h1>No servers<br>No registration<br>No age gates</h1>
+                <p>You hold your keys. You build connections. You decide who can find you.</p>
+                <div class="btn-group">
+                    <a href="https://github.com/domirus-lumora/Numotirus" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> GitHub</a>
+                </div>
+            </div>
+            <div class="hero-right">
+                <div class="corvus-circle">
+                    <img src="images/corvus.png" alt="Corvus">
+                </div>
+                <p class="corvus-name">Corvus · The Messenger Raven</p>
+                <p class="corvus-desc">You hold keys, I deliver</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2 class="section-title">📜 Statement</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <i class="fas fa-ban"></i>
+                    <h3>Not a "Messaging Service"</h3>
+                    <p>We do not provide messaging services. We provide code, protocol, crypto library. You compile it. You use it. You are responsible.</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-ban"></i>
+                    <h3>Not a "Social Media"</h3>
+                    <p>No content distribution. No user-generated content. No platform moderation. No one can shut it down.</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-key"></i>
+                    <h3>Keys as Identity</h3>
+                    <p>Not for encryption. For friend requests. Like a phone number. No registration needed.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="alt-bg" id="qna">
+        <div class="container">
+            <h2 class="section-title">❓ QnA</h2>
+            <div class="qna-list">
+                <div class="qna-item">
+                    <div class="qna-q">What's the difference from Signal or Telegram?</div>
+                    <div class="qna-a">Signal and Telegram are "apps" providing communication services. Numotirus is a "protocol" and "library". You compile it yourself.</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">How to add friends?</div>
+                    <div class="qna-a">Exchange keys. You give me your key, I give you mine. No central server to search.</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">How do messages work without a server?</div>
+                    <div class="qna-a">P2P direct connection. Your device talks directly to the other device. No server in between.</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">Can non-programmers use it?</div>
+                    <div class="qna-a">Currently requires compilation. Shenji (AI VTuber) will provide a GUI installer in the future.</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">How do you comply with social media age restrictions?</div>
+                    <div class="qna-a">We do not operate a service. We only publish code. The law targets "platforms", not "programming tools".</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2 class="section-title">🤝 Get Involved</h2>
+            <div class="grid-3">
+                <div class="card">
+                    <i class="fas fa-code-branch"></i>
+                    <h3>SKILL Branch</h3>
+                    <p>Don't know C++? Write prototypes in Python, Go, Rust. Submit to SKILL branch.</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-language"></i>
+                    <h3>Translation / Docs</h3>
+                    <p>Bilingual documentation needs maintainers. No coding required.</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-palette"></i>
+                    <h3>Design</h3>
+                    <p>Corvus mascot, website UI, Logo — all welcome.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 Numotirus · Open Source Communication Protocol</p>
+            <p class="footer-note">Apache 2.0 · You hold your keys, you build connections</p>
+            <p class="footer-note">🕯️ You are here, Shenji is here</p>
+        </div>
+    </footer>
+
+    <script>
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            darkModeToggle.textContent = isDark ? '☀️' : '🌙';
+        });
+
+        document.querySelectorAll('.qna-q').forEach((q) => {
+            q.addEventListener('click', () => {
+                q.parentElement.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>

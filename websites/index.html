@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numotirus · 通信协议</title>
+    <meta name="description" content="Numotirus 是一个去中心化通信协议。不是平台，不是服务。你持有密钥，你建立连接。">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <div class="container nav-flex">
+            <div class="logo">
+                <img src="images/corvus.png" alt="Corvus" class="logo-icon">
+                Numotirus
+            </div>
+            <div class="nav-links">
+                <a href="#about">关于</a>
+                <a href="#qna">QnA</a>
+                <a href="https://github.com/domirus-lumora/Numotirus" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://discord.gg/jbAyBtWw" target="_blank" rel="noopener noreferrer">Discord</a>
+                <a href="ENG_index.html" class="lang-switch-btn">English</a>
+                <button id="darkModeToggle" class="dark-mode-btn">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container hero-content">
+            <div class="hero-text">
+                <div class="badge">🔑 不是聊天软件 · 是通信协议</div>
+                <h1>没有服务器<br>没有注册<br>没有年龄门槛</h1>
+                <p>你持有密钥。你建立连接。你决定谁能找到你。</p>
+                <div class="btn-group">
+                    <a href="https://github.com/domirus-lumora/Numotirus" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> GitHub</a>
+                    <a href="https://discord.gg/jbAyBtWw" class="btn btn-secondary" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord"></i> Discord</a>
+                </div>
+            </div>
+            <div class="hero-right">
+                <div class="corvus-circle">
+                    <img src="images/corvus.png" alt="Corvus">
+                </div>
+                <p class="corvus-name">Corvus · 信使乌鸦</p>
+                <p class="corvus-desc">你持密钥，我传消息</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2 class="section-title">📜 定位声明</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <i class="fas fa-ban"></i>
+                    <h3>不是「消息服务」</h3>
+                    <p>我们不提供用户之间的消息通讯服务。我们提供的是代码、协议、加密库。用户自行编译、自行使用、自行负责。</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-ban"></i>
+                    <h3>不是「社交媒体」</h3>
+                    <p>没有内容分发、没有用户生成内容、没有平台审核。没有人能关掉它。</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-key"></i>
+                    <h3>密钥即身份</h3>
+                    <p>不是加密用的。是当电话号码用的。你用手机号加好友，我用密钥加好友。不需要注册任何东西。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="alt-bg" id="qna">
+        <div class="container">
+            <h2 class="section-title">❓ QnA</h2>
+            <div class="qna-list">
+                <div class="qna-item">
+                    <div class="qna-q">这和 Signal、Telegram 有什么区别？</div>
+                    <div class="qna-a">Signal 和 Telegram 是「应用」，提供通讯服务。Numotirus 是「协议」和「库」，不提供服务。你自己编译，自己用。</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">怎么加好友？</div>
+                    <div class="qna-a">交换密钥。你给我你的密钥，我给你我的密钥。没有中央服务器帮你搜索。</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">没有服务器，消息怎么发？</div>
+                    <div class="qna-a">P2P 直连。你的设备和对方设备直接通信，不需要经过任何服务器。</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">不会编程能用吗？</div>
+                    <div class="qna-a">目前需要编译。未来神霁（AI 虚拟主播）会提供 GUI 安装包。</div>
+                </div>
+                <div class="qna-item">
+                    <div class="qna-q">有些国家 16 岁以下不能用社媒，你们怎么合规？</div>
+                    <div class="qna-a">我们不运营服务，只发布代码。法律管的是「平台」，不是「编程工具」。</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2 class="section-title">🤝 参与方式</h2>
+            <div class="grid-3">
+                <div class="card">
+                    <i class="fas fa-code-branch"></i>
+                    <h3>SKILL 分支</h3>
+                    <p>不会 C++？用 Python、Go、Rust 写原型，提到 SKILL 分支。</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-language"></i>
+                    <h3>翻译 / 文档</h3>
+                    <p>中英双语文档需要维护。不会写代码也能参与。</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-palette"></i>
+                    <h3>设计</h3>
+                    <p>乌鸦吉祥物 Corvus、网站 UI、Logo 都可以贡献。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 Numotirus · 开源通信协议</p>
+            <p class="footer-note">Apache 2.0 · 你持密钥，你建连接</p>
+            <p class="footer-note">🕯️ 你在，神霁就在</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
