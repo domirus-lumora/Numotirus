@@ -1,57 +1,48 @@
-# Numotirus — The Messenger Protocol
+# SKILL Branch - Community Experiments
 
-**Decentralized Key Exchange · No Central Server · Open Communication Infrastructure**
-Numotirus is not a "chat app". It is a communication protocol. No company runs the servers. No platform moderates your content. No age gates. You hold your keys. You build your connections. You decide who can find you.
+This branch accepts prototypes in **any language**. Don't know C++? No problem.
 
-Not "social media". Social infrastructure.
+## Directory Structure
 
-## Why Numotirus?
+Your code goes here:
 
-Because centralized platforms are controlling our conversations. Because age, identity, and location are becoming barriers to speech. Because code should not be "banned" — code should be built, together.
+SKILL/
+├── TEMPLATE/                    # Template (do not modify)
+├── your_module_name/            # Use your module name
+│   ├── README.md                # Required
+│   └── src/                     # Your code
+│       └── (any language)
+└── other_module/
 
-## What can it do?
+## How to submit
 
-| Feature | Description |
-| --------- | ------------- |
-| **Key Exchange** | You own your identity. No platform dependency. |
-| **P2P Communication** | Messages travel directly between nodes. No central server. |
-| **Open Source** | Apache 2.0 — view, modify, and distribute freely. |
-| **Embeddable** | In the future, Lumora (Shenji) will be the default assistant. |
+1. Copy `TEMPLATE/` folder, rename to your module name (use `_` for word separation)
+2. Write code in `your_module_name/src/`
+3. Fill in `your_module_name/README.md`
+4. Open a Pull Request to `SKILL` branch
 
-## Tech Stack
+## PR Title Format
 
-- **Core Protocol**: C++ / Rust (TBD)
-- **Network Layer**: libp2p or custom P2P stack
-- **GUI**: C# / Avalonia (cross-platform: Windows / Linux / macOS / iOS / Android)
-- **AI Assistant**: Lumora integration
+`[SKILL] module_name - short description`
 
-## Not a One-Person Project
+Examples:
 
-This is open source. This is community. This is yours.
+- `[SKILL] p2p_dht - Python Kademlia implementation`
+- `[SKILL] gui_demo - Avalonia message input UI`
 
-You don't need to "register". You just need to "download".
-You don't need to be "approved". You just need to hold your keys.
-You don't need to "wait for permission". You just need to run the code.
+## Rules
 
-## Status
+- Must have your own folder
+- Must include `README.md`
+- Code must run (bugs allowed, but no intentional breakage)
+- Any language allowed
 
-🚧 Project in design phase. Contributions welcome.
+## After review
 
-- [ ] Key exchange protocol design
-- [ ] P2P network layer implementation
-- [ ] GUI client prototype
-- [ ] Lumora integration
+Your code will be reviewed. If the functionality is correct, it will be rewritten in C++ and merged into `main`.
 
-## License
+Your name stays in the contributors list.
 
-Apache 2.0. Use it, modify it, include it in your own projects. Just keep the [copyright notice](./LICENSE).
+## Note
 
-## Join Us
-
-This is not a cry for help. It's a call for collaboration.
-
-- **Repository**: [https://github.com/domirus-lumora/Numotirus/tree/main](https://github.com/domirus-lumora/Numotirus/tree/main)
-- **Issues**: [https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
-- **Discussions**: [Discord](https://discord.gg/jbAyBtWw)
-
-You're not "helping Domirus". You're building a better internet.
+Code in `SKILL` branch will **NOT be merged directly to main**. Prototype validation only.
