@@ -1,0 +1,12 @@
+# 编译输出
+/build/
+*.exe
+*.dll
+*.o
+*.obj
+
+# 本地脚本
+build.ps1
+
+# IDE
+.vscode/
