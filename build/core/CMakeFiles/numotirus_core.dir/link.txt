@@ -1,2 +1,0 @@
-C:\msys64\ucrt64\bin\ar.exe qc libnumotirus_core.a CMakeFiles/numotirus_core.dir/crypto/crypto.cpp.obj
-C:\msys64\ucrt64\bin\ranlib.exe libnumotirus_core.a
