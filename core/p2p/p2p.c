@@ -8,7 +8,7 @@
 
 #include "p2p.h"
 #include "../crypto/crypto_c.h"
-#include <ikcp.h>
+#include "kcp/ikcp.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <stdlib.h>
