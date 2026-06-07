@@ -1,0 +1,6 @@
+D:/Lumora/Code/Numotirus/build/CMakeFiles/edit_cache.dir
+D:/Lumora/Code/Numotirus/build/CMakeFiles/rebuild_cache.dir
+D:/Lumora/Code/Numotirus/build/core/CMakeFiles/numotirus_core.dir
+D:/Lumora/Code/Numotirus/build/core/CMakeFiles/crypto_test.dir
+D:/Lumora/Code/Numotirus/build/core/CMakeFiles/edit_cache.dir
+D:/Lumora/Code/Numotirus/build/core/CMakeFiles/rebuild_cache.dir

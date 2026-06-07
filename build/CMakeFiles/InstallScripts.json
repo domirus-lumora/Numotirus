@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/Lumora/Code/Numotirus/build/cmake_install.cmake",
+		"D:/Lumora/Code/Numotirus/build/core/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
