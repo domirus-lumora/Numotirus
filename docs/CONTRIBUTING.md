@@ -2,6 +2,19 @@
 
 感谢你考虑参与 Numotirus。这不是“帮我们”的项目，是“和我们一起建”的项目。
 
+## 当前进度
+
+| 模块 | 状态 | 说明 |
+| ------ | ------ | ------ |
+| `core/crypto` | ✅ 已完成 | C API，X25519 + XChaCha20-Poly1305 + ECIES |
+| `core/p2p` | ✅ 已完成 | UDP + KCP + select 非阻塞，跨平台 |
+| `core/protocol` (ZRTP) | ✅ 已完成 | 密钥交换 + SAS 生成 + TOFU |
+| `p2p_chat.c` | ✅ 可运行 | 命令行聊天示例 |
+| `core/plugin` | ❌ 待实现 | 插件系统 |
+| GUI | ❌ 待实现 | Avalonia (C#) |
+
+**下一步需要你**：NAT 穿透、ZRTP 异步回调、GUI 原型、神霁集成。
+
 ## Issue 提交
 
 ### Bug 报告
@@ -9,12 +22,12 @@
 - 复现步骤
 - 预期行为
 - 实际行为
-- 环境（操作系统、版本）
+- 环境（操作系统、编译器版本）
 
 ### 功能请求
 
 - 用户场景（不是“我要 X 功能”，而是“我想做 Y，X 能帮我”）
-- 如果涉及协议设计，说明是哪一层（密钥交换 / P2P / 加密）
+- 说明是哪一层：加密层 / 网络层 / 协议层 / GUI
 
 ## Pull Request
 
@@ -30,8 +43,9 @@
 
 示例：
 
-- `[Protocol] 添加 X25519 密钥交换骨架`
-- `[Network] 引导节点发现骨架`
+- `[Crypto] 添加 X25519 密钥交换骨架`
+- `[Network] 添加 KCP 超时重传优化`
+- `[Protocol] ZRTP SAS 异步回调`
 - `[GUI] 初始化 Avalonia 主窗口`
 
 ### PR 描述
@@ -52,10 +66,14 @@
 
 ## 代码风格
 
-语言未定，暂时要求：
+核心语言：**C11 + C++20**（C 部分用 C11，协议层用 C++20）
 
-- 提交前运行 `clang-format`（C++）/ `rustfmt`（Rust）/ `dotnet format`（C#）
-- 代码注释规则：英文在前，中文在后，格式 `// English text. 中文文本。`
+- C/C++ 代码：提交前运行 `clang-format`
+- C# 代码：提交前运行 `dotnet format`
+- 代码注释：英文在前，中文在后，格式 `// English text. 中文文本。`
+- AI 生成代码：允许，但必须理解每一行、自己测试、PR 中声明
+
+完整规范见 `CODE_STYLE.md`
 
 ## 行为准则
 
@@ -63,8 +81,6 @@
 
 歧视、骚扰、人肉搜索 → 直接封禁。
 
-完整行为准则见 `CODE_OF_CONDUCT.md`
-
 ## 问题咨询
 
-在 GitHub 上开 Discussion，或在 Discord找我们。
+在 GitHub 上开 Discussion，或在 [Discord](https://discord.gg/jbAyBtWw) 找我们。

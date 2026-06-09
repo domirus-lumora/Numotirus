@@ -7,26 +7,22 @@
 #include <string.h>
 #include <locale.h>
 
-// Callback for received messages. 接收消息的回调函数。
 static void on_message(const char* ip, uint16_t port, const uint8_t* data, size_t len) {
     printf("\n[%s:%d] %.*s\n> ", ip, port, (int)len, data);
     fflush(stdout);
 }
 
 int main(int argc, char** argv) {
-        // Set console to UTF-8 on Windows. Windows 下设置控制台为 UTF-8。
-    #ifdef _WIN32
-        system("chcp 65001 > nul");
-    #endif
-    // Set locale for UTF-8. 设置区域为 UTF-8。
-        setlocale(LC_ALL, "zh_CN.UTF-8");
-    //Go on. 继续。
+#ifdef _WIN32
+    system("chcp 65001 > nul");
+#endif
+    setlocale(LC_ALL, "zh_CN.UTF-8");
+
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <listen_port> [peer_ip peer_port]\n", argv[0]);
         return 1;
     }
 
-    // Create and start node. 创建并启动节点。
     uint16_t listen_port = (uint16_t)atoi(argv[1]);
     P2PNode* node = p2p_create(listen_port);
     if (!node) {
@@ -44,7 +40,6 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 32; i++) printf("%02x", pub[i]);
     printf("\n");
 
-    // Parse peer address from command line if provided. 如果命令行提供了对方地址，解析它。
     char peer_ip[64] = "127.0.0.1";
     uint16_t peer_port = 0;
     int send_mode = 0;
@@ -58,7 +53,6 @@ int main(int argc, char** argv) {
         printf("Send mode disabled. Use /peer <ip> <port> to enable.\n");
     }
 
-    // Prompt for peer's public key. 提示输入对方的公钥。
     printf("\nEnter peer's public key (64 hex chars) to enable encryption:\n");
     printf("> ");
 
@@ -74,12 +68,18 @@ int main(int argc, char** argv) {
             }
             p2p_set_peer_key(node, peer_pub);
             printf("Peer key set. Encryption enabled.\n");
+
+            // ZRTP 密钥交换和 SAS 验证
+            if (p2p_zrtp_exchange(node) != 0) {
+                printf("ZRTP verification failed. Exiting.\n");
+                p2p_destroy(node);
+                return 1;
+            }
         } else if (strlen(hex) > 0) {
             printf("Invalid key length (must be 64 hex chars).\n");
         }
     }
 
-    // Show commands. 显示命令帮助。
     printf("\nCommands:\n");
     printf("  /peer <ip> <port>  - set peer address\n");
     printf("  /key <64hex>       - set peer public key\n");
@@ -88,13 +88,11 @@ int main(int argc, char** argv) {
     printf("> ");
     fflush(stdout);
 
-    // Main loop. 主循环。
     char line[1024];
     while (fgets(line, sizeof(line), stdin)) {
         line[strcspn(line, "\n")] = 0;
         if (strlen(line) == 0) continue;
 
-        // Handle commands. 处理命令。
         if (strncmp(line, "/peer", 5) == 0) {
             char ip[64];
             int port;

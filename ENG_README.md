@@ -13,17 +13,17 @@ Because centralized platforms are controlling our conversations. Because age, id
 
 | Feature | Description |
 | --------- | ------------- |
-| **Key Exchange** | You own your identity. No platform dependency. |
-| **P2P Communication** | Messages travel directly between nodes. No central server. |
+| **Key Exchange** | ZRTP protocol — automatic negotiation + SAS verification. You own your identity. |
+| **P2P Communication** | UDP + KCP reliable transport. Direct node-to-node messaging. No central server. |
 | **Open Source** | Apache 2.0 — view, modify, and distribute freely. |
-| **Embeddable** | In the future, Lumora (Shenji) will be the default assistant. |
+| **Embeddable** | Lumora (Shenji) integration planned as default assistant. |
 
 ## Tech Stack
 
-- **Core Protocol**: C++ / Rust (TBD)
-- **Network Layer**: libp2p or custom P2P stack
-- **GUI**: C# / Avalonia (cross-platform: Windows / Linux / macOS / iOS / Android)
-- **AI Assistant**: Lumora integration
+- **Core Protocol**: C++20 + C11 (cross-platform)
+- **Network Layer**: Custom P2P stack (UDP + KCP + non-blocking `select()`)
+- **Cryptography**: libsodium (X25519 + XChaCha20-Poly1305 + ZRTP)
+- **GUI**: C# / Avalonia (cross-platform, in development)
 
 ## Not a One-Person Project
 
@@ -35,10 +35,10 @@ You don't need to "wait for permission". You just need to run the code.
 
 ## Status
 
-🚧 Project in design phase. Contributions welcome.
+🚧 Core protocol and P2P layer have working implementations. Contributions welcome.
 
-- [ ] Key exchange protocol design
-- [ ] P2P network layer implementation
+- [x] Key exchange protocol (ZRTP + SAS)
+- [x] P2P network layer (UDP + KCP + cross-platform)
 - [ ] GUI client prototype
 - [ ] Lumora integration
 
@@ -50,7 +50,7 @@ Apache 2.0. Use it, modify it, include it in your own projects. Just keep the [c
 
 This is not a cry for help. It's a call for collaboration.
 
-- **Repository**: [https://github.com/domirus-lumora/Numotirus/tree/main](https://github.com/domirus-lumora/Numotirus/tree/main)
+- **Repository**: [https://github.com/domirus-lumora/Numotirus](https://github.com/domirus-lumora/Numotirus)
 - **Issues**: [https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
 - **Discussions**: [Discord](https://discord.gg/jbAyBtWw)
 

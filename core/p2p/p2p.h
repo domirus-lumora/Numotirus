@@ -1,8 +1,15 @@
+// core/p2p/p2p.h
+// P2P network layer for Numotirus. Numotirus 的 P2P 网络层。
+
 #ifndef P2P_H
 #define P2P_H
 
 #include <stdint.h>
 #include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Opaque node handle. 不透明的节点句柄。
 typedef struct P2PNode P2PNode;
@@ -30,7 +37,14 @@ int p2p_is_peer_ready(P2PNode* n);
 int p2p_send(P2PNode* n, const char* ip, uint16_t port,
              const uint8_t* data, size_t len);
 
+// Perform ZRTP key exchange and SAS verification. 执行 ZRTP 密钥交换和 SAS 验证。
+int p2p_zrtp_exchange(P2PNode* n);
+
 // Destroy node and free resources. 销毁节点并释放资源。
 void p2p_destroy(P2PNode* n);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
