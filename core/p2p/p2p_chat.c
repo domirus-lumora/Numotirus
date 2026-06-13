@@ -1,5 +1,6 @@
-// p2p_chat.c
-// Command line chat demo using P2P layer. 使用 P2P 层的命令行聊天演示。
+// core/p2p/p2p_chat.c
+// Command line chat demo using asynchronous ZRTP.
+// 使用异步 ZRTP 的命令行聊天演示。
 
 #include "p2p.h"
 #include <stdio.h>
@@ -7,7 +8,43 @@
 #include <string.h>
 #include <locale.h>
 
-static void on_message(const char* ip, uint16_t port, const uint8_t* data, size_t len) {
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
+// Global node pointer. 全局节点指针。
+static P2PNode* g_node = NULL;
+static int g_zrtp_waiting = 0;  // 1 if waiting for user confirmation.
+
+// Callback when SAS is ready. SAS 就绪时的回调。
+void on_sas_ready(const char* sas, void* user_data) {
+    (void)user_data;
+    printf("\n========================================\n");
+    printf("ZRTP Short Authentication String (SAS):\n");
+    printf("  %s\n", sas);
+    printf("Please verify this code with your peer.\n");
+    printf("Type 'y' then Enter to confirm, 'n' to reject.\n");
+    printf("> ");
+    fflush(stdout);
+    g_zrtp_waiting = 1;
+}
+
+// Callback when user confirms. 用户确认时的回调。
+void on_zrtp_result(int confirmed, void* user_data) {
+    (void)user_data;
+    if (confirmed) {
+        printf("\n✅ ZRTP verification successful. You can now send encrypted messages.\n");
+    } else {
+        printf("\n❌ ZRTP verification rejected. Encryption not established.\n");
+    }
+    printf("> ");
+    fflush(stdout);
+}
+
+// Message callback. 消息回调。
+void on_message(const char* ip, uint16_t port, const uint8_t* data, size_t len) {
     printf("\n[%s:%d] %.*s\n> ", ip, port, (int)len, data);
     fflush(stdout);
 }
@@ -29,6 +66,7 @@ int main(int argc, char** argv) {
         printf("Failed to create P2P node\n");
         return 1;
     }
+    g_node = node;
 
     p2p_set_callback(node, on_message);
     p2p_start(node);
@@ -67,11 +105,11 @@ int main(int argc, char** argv) {
                 peer_pub[i] = (uint8_t)val;
             }
             p2p_set_peer_key(node, peer_pub);
-            printf("Peer key set. Encryption enabled.\n");
+            printf("Peer key set. Starting asynchronous ZRTP exchange...\n");
 
-            // ZRTP 密钥交换和 SAS 验证
-            if (p2p_zrtp_exchange(node) != 0) {
-                printf("ZRTP verification failed. Exiting.\n");
+            // Start async ZRTP. 启动异步 ZRTP。
+            if (p2p_zrtp_start_exchange(node, on_sas_ready, on_zrtp_result, NULL) != 0) {
+                printf("Failed to start ZRTP exchange.\n");
                 p2p_destroy(node);
                 return 1;
             }
@@ -82,17 +120,30 @@ int main(int argc, char** argv) {
 
     printf("\nCommands:\n");
     printf("  /peer <ip> <port>  - set peer address\n");
-    printf("  /key <64hex>       - set peer public key\n");
+    printf("  /key <64hex>       - set peer public key (if not already set)\n");
     printf("  /exit              - quit\n");
     printf("  other text         - send message\n");
     printf("> ");
     fflush(stdout);
 
+    // Main input loop. 主输入循环，统一处理所有输入。
     char line[1024];
     while (fgets(line, sizeof(line), stdin)) {
         line[strcspn(line, "\n")] = 0;
         if (strlen(line) == 0) continue;
 
+        // Handle ZRTP confirmation if waiting. 如果在等待 ZRTP 确认。
+        if (g_zrtp_waiting) {
+            if (line[0] == 'y' || line[0] == 'Y') {
+                p2p_zrtp_confirm(g_node, 1);
+            } else {
+                p2p_zrtp_confirm(g_node, 0);
+            }
+            g_zrtp_waiting = 0;
+            continue;
+        }
+
+        // Normal command processing. 正常命令处理。
         if (strncmp(line, "/peer", 5) == 0) {
             char ip[64];
             int port;
@@ -115,7 +166,8 @@ int main(int argc, char** argv) {
                     peer_pub[i] = (uint8_t)val;
                 }
                 p2p_set_peer_key(node, peer_pub);
-                printf("Peer key set. Encryption enabled.\n");
+                printf("Peer key set. Starting ZRTP exchange...\n");
+                p2p_zrtp_start_exchange(node, on_sas_ready, on_zrtp_result, NULL);
             } else {
                 printf("Invalid key (must be 64 hex chars)\n");
             }
