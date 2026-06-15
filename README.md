@@ -54,6 +54,6 @@ Apache 2.0。你可以用它、改它、把它用在你的项目里。只需要[
 
 - **代码仓库**：[https://github.com/domirus-lumora/Numotirus](https://github.com/domirus-lumora/Numotirus)
 - **Issues**：[https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
-- **讨论**：[点击加入](https://discord.gg/jbAyBtWw)
+- **讨论**：[点击加入](https://discord.gg/NKV76Vh9Tz)
 
 你不是在“帮影域”。你是在建一个更好的互联网。
