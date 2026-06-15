@@ -52,6 +52,6 @@ This is not a cry for help. It's a call for collaboration.
 
 - **Repository**: [https://github.com/domirus-lumora/Numotirus](https://github.com/domirus-lumora/Numotirus)
 - **Issues**: [https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
-- **Discussions**: [Discord](https://discord.gg/jbAyBtWw)
+- **Discussions**: [Discord](https://discord.gg/NKV76Vh9Tz)
 
 You're not "helping Domirus". You're building a better internet.
