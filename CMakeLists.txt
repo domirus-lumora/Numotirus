@@ -16,3 +16,5 @@ option(BUILD_CLI "Build CLI tool" OFF)
 if(BUILD_CLI)
     add_subdirectory(cli)
 endif()
+# SychevS/p2p
+add_subdirectory(core/p2p/dht)

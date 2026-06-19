@@ -6,6 +6,7 @@
 
 - X25519 密钥交换 + XChaCha20-Poly1305 认证加密 (ECIES)
 - UDP 直连，无中央服务器
+- Kademlia DHT 节点发现
 - 支持中文、英文、Emoji 等 UTF-8 字符
 - Windows / Linux 跨平台支持
 
@@ -18,19 +19,28 @@
 ### Windows (MSYS2 / MinGW)
 
 ```bash
-gcc -c crypto_c.c -o crypto_c.o -lsodium
-gcc -c p2p.c -o p2p.o -lws2_32
-gcc -c p2p_chat.c -o p2p_chat.o -I.
-gcc -o p2p_chat.exe p2p_chat.o p2p.o crypto_c.o -lsodium -lws2_32 -lpthread
+gcc -c core/p2p/kcp/ikcp.c -o ikcp.o
+g++ -std=c++20 -c core/p2p/dht.cpp -o dht.o
+g++ -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o
+gcc -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto
+gcc -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto
+gcc -c core/p2p/p2p.c -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -c core/p2p/p2p_chat.c -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -o p2p_chat.exe p2p_chat.o p2p.o dht.o dht_c.o zrtp.o crypto_c.o ikcp.o -lstdc++ -lsodium -lws2_32 -lpthread
 ```
 
 ### Linux
 
 ```bash
-gcc -c crypto_c.c -o crypto_c.o -lsodium
-gcc -c p2p.c -o p2p.o
-gcc -c p2p_chat.c -o p2p_chat.o -I.
-gcc -o p2p_chat p2p_chat.o p2p.o crypto_c.o -lsodium -lpthread
+# 类似，去掉 -lws2_32
+gcc -c core/p2p/kcp/ikcp.c -o ikcp.o
+g++ -std=c++20 -c core/p2p/dht.cpp -o dht.o
+g++ -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o
+gcc -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto
+gcc -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto
+gcc -c core/p2p/p2p.c -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -c core/p2p/p2p_chat.c -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -o p2p_chat p2p_chat.o p2p.o dht.o dht_c.o zrtp.o crypto_c.o ikcp.o -lstdc++ -lsodium -lpthread
 ```
 
 ## Usage / 使用
@@ -53,6 +63,7 @@ gcc -o p2p_chat p2p_chat.o p2p.o crypto_c.o -lsodium -lpthread
 | ------ | ------ |
 | `/key <64hex>` | 设置对方公钥（启用加密） |
 | `/peer <ip> <port>` | 设置对方地址 |
+| `/dht` | 查看 DHT 路由表 |
 | `/exit` | 退出 |
 | 其他文字 | 发送消息 |
 
@@ -72,6 +83,7 @@ gcc -o p2p_chat p2p_chat.o p2p.o crypto_c.o -lsodium -lpthread
 │  - UDP socket 管理                               │
 │  - 接收线程                                      │
 │  - 密钥交换                                      │
+│  - DHT 路由表                                    │
 ├─────────────────────────────────────────────────┤
 │  crypto_c.h / crypto_c.c (加密层)                │
 │  - X25519 密钥对生成                             │

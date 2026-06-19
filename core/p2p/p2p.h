@@ -72,6 +72,30 @@ void p2p_zrtp_confirm(P2PNode* n, int confirmed);
 // Destroy node and free resources. 销毁节点并释放资源。
 void p2p_destroy(P2PNode* n);
 
+// Get DHT instance. 获取 DHT 实例。
+void* p2p_get_dht(P2PNode* n);
+
+// DHT routing table. DHT 路由表。
+// Create DHT instance. 创建 DHT 实例。
+void* dht_create(const uint8_t* own_id);
+
+// Destroy DHT instance. 销毁 DHT 实例。
+void dht_destroy(void* dht);
+
+// Add or update node in routing table. 在路由表中添加或更新节点。
+void dht_add_node(void* dht, const uint8_t* id, const char* ip, uint16_t port, uint64_t last_seen);
+
+// Find K closest nodes to target. 查找离目标最近的 K 个节点。
+// Returns number of nodes found. 返回找到的节点数。
+int dht_find_closest(void* dht, const uint8_t* target,
+                     uint8_t* out_ids, char* out_ips, uint16_t* out_ports, int max_count);
+
+// Print routing table for debugging. 打印路由表用于调试。
+void dht_print(void* dht);
+
+// Get DHT instance. 获取 DHT 实例。
+void* p2p_get_dht(P2PNode* n);
+
 #ifdef __cplusplus
 }
 #endif

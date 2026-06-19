@@ -107,7 +107,6 @@ int main(int argc, char** argv) {
             p2p_set_peer_key(node, peer_pub);
             printf("Peer key set. Starting asynchronous ZRTP exchange...\n");
 
-            // Start async ZRTP. 启动异步 ZRTP。
             if (p2p_zrtp_start_exchange(node, on_sas_ready, on_zrtp_result, NULL) != 0) {
                 printf("Failed to start ZRTP exchange.\n");
                 p2p_destroy(node);
@@ -120,26 +119,30 @@ int main(int argc, char** argv) {
 
     printf("\nCommands:\n");
     printf("  /peer <ip> <port>  - set peer address\n");
-    printf("  /key <64hex>       - set peer public key (if not already set)\n");
+    printf("  /key <64hex>       - set peer public key\n");
+    printf("  /dht               - show DHT routing table\n");
     printf("  /exit              - quit\n");
     printf("  other text         - send message\n");
     printf("> ");
     fflush(stdout);
 
-    // Main input loop. 主输入循环，统一处理所有输入。
     char line[1024];
     while (fgets(line, sizeof(line), stdin)) {
         line[strcspn(line, "\n")] = 0;
         if (strlen(line) == 0) continue;
 
-        // Handle ZRTP confirmation if waiting. 如果在等待 ZRTP 确认。
+        // If waiting for ZRTP confirmation. 如果正在等待 ZRTP 确认。
         if (g_zrtp_waiting) {
             if (line[0] == 'y' || line[0] == 'Y') {
                 p2p_zrtp_confirm(g_node, 1);
-            } else {
+                g_zrtp_waiting = 0;
+            } else if (line[0] == 'n' || line[0] == 'N') {
                 p2p_zrtp_confirm(g_node, 0);
+                g_zrtp_waiting = 0;
+            } else {
+                printf("Please type 'y' or 'n' to confirm SAS.\n> ");
+                fflush(stdout);
             }
-            g_zrtp_waiting = 0;
             continue;
         }
 
@@ -171,6 +174,10 @@ int main(int argc, char** argv) {
             } else {
                 printf("Invalid key (must be 64 hex chars)\n");
             }
+        }
+        else if (strcmp(line, "/dht") == 0) {
+            // Print DHT routing table. 打印 DHT 路由表。
+            dht_print(p2p_get_dht(node));
         }
         else if (strcmp(line, "/exit") == 0) {
             break;

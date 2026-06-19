@@ -1,11 +1,12 @@
 # P2P Encrypted Chat Module
 
-End-to-end encrypted P2P command line chat module.
+End-to-end encrypted P2P command-line chat module.
 
 ## Features
 
 - X25519 key exchange + XChaCha20-Poly1305 authenticated encryption (ECIES)
 - UDP direct connection, no central server
+- Kademlia DHT node discovery
 - UTF-8 support (Chinese, English, Emoji, etc.)
 - Cross-platform: Windows / Linux
 
@@ -18,19 +19,27 @@ End-to-end encrypted P2P command line chat module.
 ### Windows (MSYS2 / MinGW)
 
 ```bash
-gcc -c crypto_c.c -o crypto_c.o -lsodium
-gcc -c p2p.c -o p2p.o -lws2_32
-gcc -c p2p_chat.c -o p2p_chat.o -I.
-gcc -o p2p_chat.exe p2p_chat.o p2p.o crypto_c.o -lsodium -lws2_32 -lpthread
+gcc -c core/p2p/kcp/ikcp.c -o ikcp.o
+g++ -std=c++20 -c core/p2p/dht.cpp -o dht.o
+g++ -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o
+gcc -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto
+gcc -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto
+gcc -c core/p2p/p2p.c -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -c core/p2p/p2p_chat.c -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -o p2p_chat.exe p2p_chat.o p2p.o dht.o dht_c.o zrtp.o crypto_c.o ikcp.o -lstdc++ -lsodium -lws2_32 -lpthread
 ```
 
 ### Linux
 
 ```bash
-gcc -c crypto_c.c -o crypto_c.o -lsodium
-gcc -c p2p.c -o p2p.o
-gcc -c p2p_chat.c -o p2p_chat.o -I.
-gcc -o p2p_chat p2p_chat.o p2p.o crypto_c.o -lsodium -lpthread
+gcc -c core/p2p/kcp/ikcp.c -o ikcp.o
+g++ -std=c++20 -c core/p2p/dht.cpp -o dht.o
+g++ -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o
+gcc -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto
+gcc -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto
+gcc -c core/p2p/p2p.c -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -c core/p2p/p2p_chat.c -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol
+gcc -o p2p_chat p2p_chat.o p2p.o dht.o dht_c.o zrtp.o crypto_c.o ikcp.o -lstdc++ -lsodium -lpthread
 ```
 
 ## Usage
@@ -53,13 +62,14 @@ gcc -o p2p_chat p2p_chat.o p2p.o crypto_c.o -lsodium -lpthread
 | --------- | ------------- |
 | `/key <64hex>` | Set peer's public key (enable encryption) |
 | `/peer <ip> <port>` | Set peer's address |
+| `/dht` | Show DHT routing table |
 | `/exit` | Quit |
 | other text | Send message |
 
 ### Example
 
-1. Terminal 1 shows its public key on startup
-2. Terminal 2: `/key <public_key_from_terminal_1>`
+1. Terminal 1 starts, displays its public key
+2. Terminal 2 starts, enters `/key <terminal1_public_key>`
 3. Terminal 2 types a message, Terminal 1 receives it
 
 ## Architecture
@@ -72,6 +82,7 @@ gcc -o p2p_chat p2p_chat.o p2p.o crypto_c.o -lsodium -lpthread
 │  - UDP socket management                        │
 │  - Receive thread                               │
 │  - Key exchange                                 │
+│  - DHT routing table                            │
 ├─────────────────────────────────────────────────┤
 │  crypto_c.h / crypto_c.c (Crypto Layer)         │
 │  - X25519 key pair generation                   │

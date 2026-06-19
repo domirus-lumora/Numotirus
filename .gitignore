@@ -11,3 +11,6 @@ build.ps1
 
 # IDE
 .vscode/
+
+#Discord
+/discord
