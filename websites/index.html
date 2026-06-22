@@ -1,27 +1,28 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Numotirus · 通信协议</title>
-    <meta name="description" content="Numotirus 是一个去中心化通信协议。不是平台，不是服务。你持有密钥，你建立连接。">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="images/Corvus_avatar.png">
+    <meta name="description" content="Numotirus 是一个去中心化通信协议。不是平台，不是服务。你持有密钥，你建立连接。" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/png" href="images/Corvus_avatar.png" />
 </head>
 <body>
     <nav>
         <div class="container nav-flex">
             <div class="logo">
-                <img src="./images/Corvus.png" alt="Corvus" class="logo-icon">
+                <img src="./images/Corvus.png" alt="Corvus" class="logo-icon" />
                 Numotirus
             </div>
             <div class="nav-links">
                 <a href="#about">关于</a>
+                <a href="#progress">进度</a>
                 <a href="#qna">QnA</a>
                 <a href="https://github.com/domirus-lumora/Numotirus" target="_blank" rel="noopener noreferrer">GitHub</a>
-                <a href="https://discord.gg/jbAyBtWw" target="_blank" rel="noopener noreferrer">Discord</a>
+                <a href="https://discord.com/invite/KdjnEtpSP8" target="_blank" rel="noopener noreferrer">Discord</a>
                 <a href="ENG_index.html" class="lang-switch-btn">English</a>
                 <button id="darkModeToggle" class="dark-mode-btn">🌙</button>
             </div>
@@ -32,16 +33,16 @@
         <div class="container hero-content">
             <div class="hero-text">
                 <div class="badge">🔑 不是聊天软件 · 是通信协议</div>
-                <h1>没有服务器<br>没有注册<br>没有年龄门槛</h1>
+                <h1>没有服务器<br />没有注册<br />没有年龄门槛</h1>
                 <p>你持有密钥。你建立连接。你决定谁能找到你。</p>
                 <div class="btn-group">
                     <a href="https://github.com/domirus-lumora/Numotirus" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> GitHub</a>
-                    <a href="https://discord.gg/jbAyBtWw" class="btn btn-secondary" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord"></i> Discord</a>
+                    <a href="https://discord.com/invite/KdjnEtpSP8" class="btn btn-secondary" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord"></i> Discord</a>
                 </div>
             </div>
             <div class="hero-right">
                 <div class="corvus-circle">
-                    <img src="./images/Corvus.png" alt="Corvus">
+                    <img src="./images/Corvus.png" alt="Corvus" />
                 </div>
                 <p class="corvus-name">Corvus · 信使乌鸦</p>
                 <p class="corvus-desc">你持密钥，我传消息</p>
@@ -72,11 +73,64 @@
         </div>
     </section>
 
-    <section class="alt-bg" id="qna">
+    <section class="alt-bg" id="progress">
+        <div class="container">
+            <h2 class="section-title">🧩 当前进度</h2>
+            <table class="progress-table">
+                <thead>
+                    <tr>
+                        <th>状态</th>
+                        <th>模块</th>
+                        <th>进度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td>加密层 (X25519 + XChaCha20-Poly1305)</td>
+                        <td><div class="progress-bar"></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td>P2P 网络层 (UDP + KCP)</td>
+                        <td><div class="progress-bar"></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td>密钥交换 (ZRTP + SAS 验证)</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td>DHT 节点发现</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge in-progress">🔄 开发中</span></td>
+                        <td>NAT 穿透</td>
+                        <td><div class="progress-bar"></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge pending">⏳ 待开发</span></td>
+                        <td>GUI</td>
+                        <td><div class="progress-bar"></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge pending">⏳ 待开发</span></td>
+                        <td>神霁集成</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="progress-note">项目开始于 2026 年 6 月 1 日 · 21 天核心协议完成</p>
+        </div>
+    </section>
+
+    <section id="qna">
         <div class="container">
             <h2 class="section-title">❓ QnA</h2>
             <div class="qna-list">
-                <div class="qna-item">
+                <div class="qna-item active">
                     <div class="qna-q">这和 Signal、Telegram 有什么区别？</div>
                     <div class="qna-a">Signal 和 Telegram 是「应用」，提供通讯服务。Numotirus 是「协议」和「库」，不提供服务。你自己编译，自己用。</div>
                 </div>
@@ -96,6 +150,37 @@
                     <div class="qna-q">有些国家 16 岁以下不能用社媒，你们怎么合规？</div>
                     <div class="qna-a">我们不运营服务，只发布代码。法律管的是「平台」，不是「编程工具」。</div>
                 </div>
+                <div class="qna-item">
+                    <div class="qna-q">我现在就能用吗？</div>
+                    <div class="qna-a">能。你需要在电脑上编译代码，然后通过命令行运行。目前版本支持在同一局域网内收发加密消息。NAT 穿透完成后，你可以在不同网络之间直接通信。</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="alt-bg" id="corvus">
+        <div class="container">
+            <h2 class="section-title corvus-title">🖤 信使乌鸦 · Corvus</h2>
+            <div class="corvus-story">
+                <div class="corvus-story-icon">🐦‍⬛</div>
+                <p class="corvus-story-p">
+                    在北欧神话里，<strong>奥丁</strong> 有两只乌鸦，<strong>福金</strong> 和 <strong>雾尼</strong>。
+                    它们飞遍九界，把看到、听到的一切带回来。它们是奥丁的耳目。
+                </p>
+                <p class="corvus-story-p">
+                    <a href="https://zh.wikipedia.org/wiki/%E7%A6%8F%E9%87%91%E5%92%8C%E9%9C%A7%E5%B0%BC" target="_blank" rel="noopener noreferrer" class="corvus-wiki-link">
+                        <i class="fas fa-book-open"></i> 福金和雾尼 · 维基百科
+                    </a>
+                </p>
+                <p class="corvus-story-p">
+                    <strong>Numotirus 的 Corvus 不做耳目。</strong>
+                    它不偷看，不记录，不判断。
+                </p>
+                <p class="corvus-story-p">
+                    它只做一件事：<br />
+                    <span class="corvus-highlight">把你的消息，带到它该去的地方。</span>
+                </p>
+                <p class="corvus-tagline">「你持密钥，我传消息。」</p>
             </div>
         </div>
     </section>
@@ -128,6 +213,11 @@
             <p>© 2026 Numotirus · 开源通信协议</p>
             <p class="footer-note">Apache 2.0 · 你持密钥，你建连接</p>
             <p class="footer-note">🕯️ 你在，神霁就在</p>
+            <p class="footer-link">
+                <a href="https://github.com/domirus-lumora/Numotirus" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-github"></i> 完整代码在这里 →
+                </a>
+            </p>
         </div>
     </footer>
 

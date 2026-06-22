@@ -83,4 +83,4 @@
 
 ## 问题咨询
 
-在 GitHub 上开 Discussion，或在 [Discord](https://discord.gg/jbAyBtWw) 找我们。
+在 GitHub 上开 Discussion，或在 [Discord](https://discord.com/invite/KdjnEtpSP8) 找我们。

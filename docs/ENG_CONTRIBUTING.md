@@ -85,4 +85,4 @@ Discrimination, harassment, or doxxing → immediate ban.
 
 ## Questions
 
-Open a Discussion on GitHub, or find us on [Discord](https://discord.gg/jbAyBtWw).
+Open a Discussion on GitHub, or find us on [Discord](https://discord.com/invite/KdjnEtpSP8).

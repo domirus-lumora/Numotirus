@@ -5,6 +5,8 @@ Numotirus is not a "chat app". It is a communication protocol. No company runs t
 
 Not "social media". Social infrastructure.
 
+📖 **[Read this talk](./docs/ENG_humanity.md)** — A monologue about connection, disaster, and trust.
+
 ## Why Numotirus?
 
 Because centralized platforms are controlling our conversations. Because age, identity, and location are becoming barriers to speech. Because code should not be "banned" — code should be built, together.
@@ -52,6 +54,6 @@ This is not a cry for help. It's a call for collaboration.
 
 - **Repository**: [https://github.com/domirus-lumora/Numotirus](https://github.com/domirus-lumora/Numotirus)
 - **Issues**: [https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
-- **Discussions**: [Discord](https://discord.gg/NKV76Vh9Tz)
+- **Discussions**: [Discord](https://discord.com/invite/KdjnEtpSP8)
 
 You're not "helping Domirus". You're building a better internet.

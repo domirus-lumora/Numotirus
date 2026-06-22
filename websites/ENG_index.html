@@ -1,27 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Numotirus · Communication Protocol</title>
-    <meta name="description" content="Numotirus is a decentralized communication protocol. Not a platform, not a service. You hold your keys, you build connections.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="./style.css">
-    <link rel="icon" type="image/png" href="images/Corvus_avatar.png">
+    <meta name="description" content="Numotirus is a decentralized communication protocol. Not a platform, not a service. You hold your keys, you build connections." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="icon" type="image/png" href="images/Corvus_avatar.png" />
 </head>
 <body>
     <nav>
         <div class="container nav-flex">
             <div class="logo">
-                <img src="./images/Corvus.png" alt="Corvus" class="logo-icon">
+                <img src="./images/Corvus.png" alt="Corvus" class="logo-icon" />
                 Numotirus
             </div>
             <div class="nav-links">
                 <a href="#about">About</a>
+                <a href="#progress">Progress</a>
                 <a href="#qna">QnA</a>
                 <a href="https://github.com/domirus-lumora/Numotirus" target="_blank" rel="noopener noreferrer">GitHub</a>
-                <a href="https://discord.gg/jbAyBtWw" target="_blank" rel="noopener noreferrer">Discord</a>
+                <a href="https://discord.com/invite/KdjnEtpSP8" target="_blank" rel="noopener noreferrer">Discord</a>
                 <a href="index.html" class="lang-switch-btn">中文</a>
                 <button id="darkModeToggle" class="dark-mode-btn">🌙</button>
             </div>
@@ -32,15 +33,16 @@
         <div class="container hero-content">
             <div class="hero-text">
                 <div class="badge">🔑 Not a chat app · A communication protocol</div>
-                <h1>No servers<br>No registration<br>No age gates</h1>
+                <h1>No servers<br />No registration<br />No age gates</h1>
                 <p>You hold your keys. You build connections. You decide who can find you.</p>
                 <div class="btn-group">
                     <a href="https://github.com/domirus-lumora/Numotirus" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> GitHub</a>
+                    <a href="https://discord.com/invite/KdjnEtpSP8" class="btn btn-secondary" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord"></i> Discord</a>
                 </div>
             </div>
             <div class="hero-right">
                 <div class="corvus-circle">
-                    <img src="./images/Corvus.png" alt="Corvus">
+                    <img src="./images/Corvus.png" alt="Corvus" />
                 </div>
                 <p class="corvus-name">Corvus · The Messenger Raven</p>
                 <p class="corvus-desc">You hold keys, I deliver</p>
@@ -55,7 +57,7 @@
                 <div class="card">
                     <i class="fas fa-ban"></i>
                     <h3>Not a "Messaging Service"</h3>
-                    <p>We do not provide messaging services. We provide code, protocol, crypto library. You compile it. You use it. You are responsible.</p>
+                    <p>We do not provide messaging services between users. We provide code, protocol, crypto library. You compile it. You use it. You are responsible.</p>
                 </div>
                 <div class="card">
                     <i class="fas fa-ban"></i>
@@ -71,17 +73,70 @@
         </div>
     </section>
 
-    <section class="alt-bg" id="qna">
+    <section class="alt-bg" id="progress">
+        <div class="container">
+            <h2 class="section-title">🧩 Progress</h2>
+            <table class="progress-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Module</th>
+                        <th>Progress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td>Crypto (X25519 + XChaCha20-Poly1305)</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td>P2P Network (UDP + KCP)</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td>Key Exchange (ZRTP + SAS)</td>
+                        <td><div class="progress-bar">div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td>DHT Node Discovery</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge in-progress">🔄 In Progress</span></td>
+                        <td>NAT Traversal</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge pending">⏳ Pending</span></td>
+                        <td>GUI</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge pending">⏳ Pending</span></td>
+                        <td>Lumora Integration</td>
+                        <td><div class="progress-bar"></div></div></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="progress-note">Started on June 1, 2026 · 21 days for core protocol</p>
+        </div>
+    </section>
+
+    <section id="qna">
         <div class="container">
             <h2 class="section-title">❓ QnA</h2>
             <div class="qna-list">
-                <div class="qna-item">
+                <div class="qna-item active">
                     <div class="qna-q">What's the difference from Signal or Telegram?</div>
-                    <div class="qna-a">Signal and Telegram are "apps" providing communication services. Numotirus is a "protocol" and "library". You compile it yourself.</div>
+                    <div class="qna-a">Signal and Telegram are "apps" providing communication services. Numotirus is a "protocol" and "library". You compile it yourself. You use it yourself.</div>
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">How to add friends?</div>
-                    <div class="qna-a">Exchange keys. You give me your key, I give you mine. No central server to search.</div>
+                    <div class="qna-a">Exchange keys. You give me your key, I give you mine. No central server to search for anyone.</div>
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">How do messages work without a server?</div>
@@ -89,12 +144,43 @@
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">Can non-programmers use it?</div>
-                    <div class="qna-a">Currently requires compilation. Shenji (AI VTuber) will provide a GUI installer in the future.</div>
+                    <div class="qna-a">Currently requires compilation. In the future, Lumora (AI VTuber) will provide a GUI installer.</div>
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">How do you comply with social media age restrictions?</div>
                     <div class="qna-a">We do not operate a service. We only publish code. The law targets "platforms", not "programming tools".</div>
                 </div>
+                <div class="qna-item">
+                    <div class="qna-q">Can I use it right now?</div>
+                    <div class="qna-a">Yes. Compile the code and run it from the command line. Current version works on the same local network. After NAT traversal, you can communicate across different networks.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="alt-bg" id="corvus">
+        <div class="container">
+            <h2 class="section-title corvus-title">🖤 The Messenger Raven · Corvus</h2>
+            <div class="corvus-story">
+                <div class="corvus-story-icon">🐦‍⬛</div>
+                <p class="corvus-story-p">
+                    In Norse mythology, <strong>Odin</strong> has two ravens, <strong>Huginn</strong> and <strong>Muninn</strong>.
+                    They fly across the nine worlds and bring back everything they see and hear. They are Odin's eyes and ears.
+                </p>
+                <p class="corvus-story-p">
+                    <a href="https://en.wikipedia.org/wiki/Huginn_and_Muninn" target="_blank" rel="noopener noreferrer" class="corvus-wiki-link">
+                        <i class="fas fa-book-open"></i> Huginn and Muninn · Wikipedia
+                    </a>
+                </p>
+                <p class="corvus-story-p">
+                    <strong>Numotirus's Corvus is not Odin's raven.</strong>
+                    It does not spy. It does not record. It does not judge.
+                </p>
+                <p class="corvus-story-p">
+                    It does only one thing:<br />
+                    <span class="corvus-highlight">Deliver your message, to where it belongs.</span>
+                </p>
+                <p class="corvus-tagline">「You hold keys, I deliver.」</p>
             </div>
         </div>
     </section>
@@ -126,23 +212,15 @@
         <div class="container">
             <p>© 2026 Numotirus · Open Source Communication Protocol</p>
             <p class="footer-note">Apache 2.0 · You hold your keys, you build connections</p>
-            <p class="footer-note">🕯️ You are here, Shenji is here</p>
+            <p class="footer-note">🕯️ You are here, Lumora is here</p>
+            <p class="footer-link">
+                <a href="https://github.com/domirus-lumora/Numotirus" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-github"></i> Full code here →
+                </a>
+            </p>
         </div>
     </footer>
 
-    <script>
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        darkModeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            darkModeToggle.textContent = isDark ? '☀️' : '🌙';
-        });
-
-        document.querySelectorAll('.qna-q').forEach((q) => {
-            q.addEventListener('click', () => {
-                q.parentElement.classList.toggle('active');
-            });
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>

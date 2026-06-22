@@ -7,6 +7,8 @@ Numotirus 不是一个“聊天软件”。它是一个通信协议。没有公�
 
 它不是“社交媒体”。它是**社交基础设施**。
 
+📖 **[读这篇演讲稿](./docs/humanity.md)** —— 一个关于连接、灾难和信任的独白。
+
 ## 为什么需要 Numotirus？
 
 因为中心化平台正在控制对话。因为年龄、身份、地理位置正在成为“说话”的门槛。因为代码不应该被“禁止”，代码应该被“共建”。
@@ -54,6 +56,6 @@ Apache 2.0。你可以用它、改它、把它用在你的项目里。只需要[
 
 - **代码仓库**：[https://github.com/domirus-lumora/Numotirus](https://github.com/domirus-lumora/Numotirus)
 - **Issues**：[https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
-- **讨论**：[点击加入](https://discord.gg/NKV76Vh9Tz)
+- **讨论**：[点击加入](https://discord.com/invite/KdjnEtpSP8)
 
 你不是在“帮影域”。你是在建一个更好的互联网。
