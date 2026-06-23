@@ -1,14 +1,17 @@
-// core/p2p/p2p.c
+// core/p2p/p2p.cpp
 // P2P network layer implementation. P2P 网络层实现。
 
 #include "p2p.h"
 #include "../crypto/crypto_c.h"
 #include "kcp/ikcp.h"
 #include "../protocol/zrtp.h"
+#include "nat_traversal.hpp"
 #include <sodium.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
+#include <string>
+#include <iostream>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -40,13 +43,15 @@ static void isleep_ms(unsigned int ms) {
 }
 #endif
 
-#define PK_SIZE 32           // 公钥/私钥大小 / Public/secret key size
-#define KCP_CONV 0x11223344u // 固定会话 ID
-#define KCP_UPDATE_MS 10     // KCP update 间隔（毫秒）
-#define SELECT_TIMEOUT_MS 100 // [Fix-1] recvfrom 超时
+#define PK_SIZE 32
+#define KCP_CONV 0x11223344u
+#define KCP_UPDATE_MS 10
+#define SELECT_TIMEOUT_MS 100
+
+using namespace numotirus::nat;
 
 // -------------------------------------------------------------------------
-// KCP 输出回调
+// KCP output callback. KCP 输出回调。
 // -------------------------------------------------------------------------
 typedef struct {
   socket_t sock;
@@ -67,35 +72,38 @@ static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
 // P2P node structure. P2P 节点结构。
 // -------------------------------------------------------------------------
 struct P2PNode {
-  socket_t sock;        // UDP socket. UDP 套接字。
-  volatile int running; // Running flag. 运行标志。
+  socket_t sock;
+  volatile int running;
 
-  uint8_t pub[PK_SIZE];  // Own public key. 自己的公钥。
-  uint8_t sec[PK_SIZE];  // Own secret key. 自己的私钥。
-  uint8_t peer[PK_SIZE]; // Peer's public key. 对方的公钥。
-  int peer_ready;        // Whether peer key is set. 是否已设置对方公钥。
+  uint8_t pub[PK_SIZE];
+  uint8_t sec[PK_SIZE];
+  uint8_t peer[PK_SIZE];
+  int peer_ready;
 
-  void (*on_message)(const char *ip, uint16_t port, const uint8_t *data,
-                     size_t len); // Message callback. 消息回调。
+  void (*on_message)(const char *ip, uint16_t port, const uint8_t *data, size_t len);
 
-  ikcpcb *kcp;    // KCP 控制块
-  KcpCtx kcp_ctx; // KCP 输出回调上下文
+  ikcpcb *kcp;
+  KcpCtx kcp_ctx;
 
   char last_peer_ip[INET_ADDRSTRLEN];
   uint16_t last_peer_port;
 
-  zrtp_session_t *zrtp;               // ZRTP session handle. ZRTP 会话句柄。
-  zrtp_sas_callback on_sas_cb;        // SAS ready callback. SAS 就绪回调。
-  zrtp_result_callback on_result_cb;  // Verification result callback. 验证结果回调。
-  void *zrtp_user_data;               // User data for callbacks. 回调用户数据。
-  int zrtp_exchanging;                // 1 if exchange in progress. 正在交换中。
+  zrtp_session_t *zrtp;
+  zrtp_sas_callback on_sas_cb;
+  zrtp_result_callback on_result_cb;
+  void *zrtp_user_data;
+  int zrtp_exchanging;
 
-  void *dht; // DHT routing table instance. DHT 路由表实例。
+  void *dht;
+
+  void *nat;
+  uint16_t nat_port;
+  int nat_initialized;
 
 #ifdef _WIN32
-  HANDLE th;                  // Receive thread handle. 接收线程句柄。
-  HANDLE kcp_th;              // KCP update thread handle. KCP 定时线程句柄。
-  CRITICAL_SECTION kcp_mutex; // KCP 互斥锁
+  HANDLE th;
+  HANDLE kcp_th;
+  CRITICAL_SECTION kcp_mutex;
 #else
   pthread_t th;
   pthread_t kcp_th;
@@ -104,7 +112,7 @@ struct P2PNode {
 };
 
 // -------------------------------------------------------------------------
-// 互斥锁封装
+// Mutex wrappers. 互斥锁封装。
 // -------------------------------------------------------------------------
 static void kcp_lock(P2PNode *n) {
 #ifdef _WIN32
@@ -122,7 +130,7 @@ static void kcp_unlock(P2PNode *n) {
 }
 
 // -------------------------------------------------------------------------
-// [Fix-2] KCP update 定时线程
+// KCP update timer thread. KCP 更新定时线程。
 // -------------------------------------------------------------------------
 #ifdef _WIN32
 static DWORD WINAPI kcp_update_loop(LPVOID arg) {
@@ -140,7 +148,7 @@ static void *kcp_update_loop(void *arg) {
 }
 
 // -------------------------------------------------------------------------
-// [Fix-1 + Fix-2] 接收线程
+// Receive thread. 接收线程。
 // -------------------------------------------------------------------------
 #ifdef _WIN32
 static DWORD WINAPI recv_loop(LPVOID arg) {
@@ -168,12 +176,8 @@ static void *recv_loop(void *arg) {
                            (struct sockaddr *)&from, &fromlen);
     if (udp_len <= 0) continue;
 
-    inet_ntop(AF_INET, &from.sin_addr, n->last_peer_ip,
-              sizeof(n->last_peer_ip));
+    inet_ntop(AF_INET, &from.sin_addr, n->last_peer_ip, sizeof(n->last_peer_ip));
     n->last_peer_port = ntohs(from.sin_port);
-
-    printf("[DHT] Received UDP packet from %s:%d, size: %d\n",
-           n->last_peer_ip, n->last_peer_port, udp_len);
 
     kcp_lock(n);
     if (n->kcp) ikcp_input(n->kcp, (char *)udp_buf, udp_len);
@@ -186,24 +190,16 @@ static void *recv_loop(void *arg) {
       kcp_unlock(n);
       if (klen <= 0) break;
 
-      // 解密并回调上层。Decrypt and deliver to the application layer.
       uint8_t *plain = NULL;
       size_t plen = 0;
       if (crypto_decrypt_private(kcp_buf, (size_t)klen, n->sec, &plain, &plen) == 0) {
-        printf("[DHT] Decrypted message, adding node: %s:%d\n",
-               n->last_peer_ip, n->last_peer_port);
-        // Add node to DHT routing table. 添加节点到 DHT 路由表。
         if (n->dht) {
           dht_add_node(n->dht, n->peer, n->last_peer_ip, n->last_peer_port, 0);
-        } else {
-          printf("[DHT] Warning: dht is NULL!\n");
         }
         if (n->on_message) {
           n->on_message(n->last_peer_ip, n->last_peer_port, plain, plen);
         }
         free(plain);
-      } else {
-        printf("[DHT] Decryption failed\n");
       }
     }
   }
@@ -225,7 +221,7 @@ P2PNode *p2p_create(uint16_t port) {
 
   if (sodium_init() < 0) return NULL;
 
-  P2PNode *n = calloc(1, sizeof(P2PNode));
+  P2PNode *n = (P2PNode *)calloc(1, sizeof(P2PNode));
   if (!n) return NULL;
 
 #ifdef _WIN32
@@ -283,12 +279,22 @@ P2PNode *p2p_create(uint16_t port) {
   n->zrtp_user_data = NULL;
   n->zrtp_exchanging = 0;
 
-  // Create DHT instance. 创建 DHT 实例。
   n->dht = dht_create(n->pub);
-  if (n->dht) {
-    printf("[DHT] Created successfully, dht ptr: %p\n", n->dht);
-  } else {
-    printf("[DHT] Creation failed!\n");
+
+  n->nat_port = port + 1;
+  n->nat_initialized = 0;
+  n->nat = nullptr;
+
+  try {
+    auto *nat = new NatTraversal();
+    if (nat) {
+      nat->Initialize("stun.l.google.com", 19302);
+      nat->SetLocalPort(n->nat_port);
+      n->nat = nat;
+      n->nat_initialized = 1;
+    }
+  } catch (...) {
+    n->nat = nullptr;
   }
 
   return n;
@@ -313,16 +319,12 @@ int p2p_start(P2PNode *n) {
   return 0;
 }
 
-// Set message callback. 设置消息回调。
-void p2p_set_callback(P2PNode *n, void (*cb)(const char *, uint16_t,
-                                             const uint8_t *, size_t)) {
+void p2p_set_callback(P2PNode *n, void (*cb)(const char *, uint16_t, const uint8_t *, size_t)) {
   if (n) n->on_message = cb;
 }
 
-// Get own public key. 获取自己的公钥。
 const uint8_t *p2p_get_public_key(P2PNode *n) { return n->pub; }
 
-// Set peer's public key. 设置对方的公钥。
 int p2p_set_peer_key(P2PNode *n, const uint8_t *k) {
   if (!n) return -1;
   memcpy(n->peer, k, PK_SIZE);
@@ -330,14 +332,9 @@ int p2p_set_peer_key(P2PNode *n, const uint8_t *k) {
   return 0;
 }
 
-// Check if peer key is set. 检查是否已设置对方公钥。
 int p2p_is_peer_ready(P2PNode *n) { return n ? n->peer_ready : 0; }
 
-// -------------------------------------------------------------------------
-// Send encrypted message via KCP. 通过 KCP 发送加密消息。
-// -------------------------------------------------------------------------
-int p2p_send(P2PNode *n, const char *ip, uint16_t port, const uint8_t *data,
-             size_t len) {
+int p2p_send(P2PNode *n, const char *ip, uint16_t port, const uint8_t *data, size_t len) {
   if (!n || !n->peer_ready) return -1;
 
   kcp_lock(n);
@@ -349,8 +346,7 @@ int p2p_send(P2PNode *n, const char *ip, uint16_t port, const uint8_t *data,
 
   uint8_t *cipher = NULL;
   size_t clen = 0;
-  if (crypto_encrypt_public(data, len, n->peer, &cipher, &clen) != 0)
-    return -1;
+  if (crypto_encrypt_public(data, len, n->peer, &cipher, &clen) != 0) return -1;
 
   kcp_lock(n);
   int ret = ikcp_send(n->kcp, (char *)cipher, (int)clen);
@@ -368,27 +364,24 @@ int p2p_zrtp_start_exchange(P2PNode *n,
                             zrtp_result_callback on_result,
                             void *user_data) {
   if (!n || !n->peer_ready) {
-    printf("Peer key not set. Cannot perform ZRTP exchange.\n");
+    std::cout << "Peer key not set. 未设置对方公钥。\n";
     return -1;
   }
   if (n->zrtp_exchanging) {
-    printf("ZRTP exchange already in progress.\n");
+    std::cout << "ZRTP already in progress. ZRTP 已在交换中。\n";
     return -1;
   }
 
   if (!n->zrtp) {
     n->zrtp = zrtp_session_new();
-    if (!n->zrtp) {
-      printf("Failed to create ZRTP session.\n");
-      return -1;
-    }
+    if (!n->zrtp) return -1;
   }
 
   zrtp_session_set_keypair(n->zrtp, n->pub, n->sec);
   zrtp_session_set_peer_public(n->zrtp, n->peer);
 
   if (zrtp_session_key_exchange(n->zrtp) != ZRTP_SUCCESS) {
-    printf("ZRTP key exchange failed.\n");
+    std::cout << "ZRTP key exchange failed. ZRTP 密钥交换失败。\n";
     return -1;
   }
 
@@ -410,9 +403,9 @@ void p2p_zrtp_confirm(P2PNode *n, int confirmed) {
 
   if (confirmed) {
     zrtp_session_mark_verified(n->zrtp);
-    printf("✅ Peer verified. Encryption channel established.\n");
+    std::cout << "✅ Peer verified. 对方已验证。\n";
   } else {
-    printf("❌ Verification failed. Connection rejected.\n");
+    std::cout << "❌ Verification rejected. 验证被拒绝。\n";
   }
 
   if (n->on_result_cb) {
@@ -422,9 +415,89 @@ void p2p_zrtp_confirm(P2PNode *n, int confirmed) {
   n->zrtp_exchanging = 0;
 }
 
-// Get DHT instance. 获取 DHT 实例。
-void* p2p_get_dht(P2PNode* n) {
-    return n ? n->dht : NULL;
+void *p2p_get_dht(P2PNode *n) {
+  return n ? n->dht : NULL;
+}
+
+// -------------------------------------------------------------------------
+// NAT traversal. NAT 穿透。
+// -------------------------------------------------------------------------
+int p2p_nat_start_traversal(P2PNode *n, const char *peer_candidates_str) {
+  if (!n || !n->nat || !n->nat_initialized) {
+    std::cout << "[NAT] NAT not initialized. NAT 未初始化。\n";
+    return -1;
+  }
+
+  if (!peer_candidates_str || std::strlen(peer_candidates_str) == 0) {
+    std::cout << "[NAT] No candidates provided. 未提供候选地址。\n";
+    return -1;
+  }
+
+  std::cout << "[NAT] Parsing candidates: " << peer_candidates_str << "\n";
+
+  auto *nat = reinterpret_cast<NatTraversal *>(n->nat);
+  std::vector<Candidate> candidates;
+  std::string str = peer_candidates_str;
+
+  while (!str.empty() && (str.back() == ' ' || str.back() == '\n' || str.back() == '\r')) {
+    str.pop_back();
+  }
+
+  size_t pos = 0;
+  while (pos < str.length()) {
+    size_t comma = str.find(',', pos);
+    std::string item = str.substr(pos, comma - pos);
+    pos = (comma == std::string::npos) ? str.length() : comma + 1;
+
+    while (!item.empty() && item.front() == ' ') item.erase(0, 1);
+    while (!item.empty() && item.back() == ' ') item.pop_back();
+
+    size_t colon = item.find(':');
+    if (colon == std::string::npos) {
+      std::cout << "[NAT] Invalid candidate format: " << item << " (missing ':')\n";
+      continue;
+    }
+
+    std::string ip = item.substr(0, colon);
+    std::string port_str = item.substr(colon + 1);
+
+    while (!ip.empty() && ip.back() == ' ') ip.pop_back();
+    while (!port_str.empty() && port_str.front() == ' ') port_str.erase(0, 1);
+
+    if (ip.empty() || port_str.empty()) {
+      std::cout << "[NAT] Invalid candidate: ip or port empty\n";
+      continue;
+    }
+
+    int port_int = std::atoi(port_str.c_str());
+    if (port_int <= 0 || port_int > 65535) {
+      std::cout << "[NAT] Invalid port: " << port_str << "\n";
+      continue;
+    }
+
+    Candidate c;
+    c.type = CandidateType::kPublic;
+    c.ip = ip;
+    c.port = static_cast<uint16_t>(port_int);
+    c.priority = 100;
+    candidates.push_back(c);
+    std::cout << "[NAT] Added candidate: " << ip << ":" << c.port << "\n";
+  }
+
+  if (candidates.empty()) {
+    std::cout << "[NAT] No valid candidates. 无有效候选地址。\n";
+    return -1;
+  }
+
+  nat->StartTraversal(candidates, [](bool success, const Candidate &peer) {
+    if (success) {
+      std::cout << "[NAT] ✅ Traversal succeeded: " << peer.ip << ":" << peer.port << "\n";
+    } else {
+      std::cout << "[NAT] ❌ Traversal failed, fallback needed. 穿透失败，需要中继。\n";
+    }
+  });
+
+  return 0;
 }
 
 // -------------------------------------------------------------------------
@@ -458,16 +531,21 @@ void p2p_destroy(P2PNode *n) {
   }
   kcp_unlock(n);
 
-  // Free ZRTP session. 释放 ZRTP 会话。
   if (n->zrtp) {
     zrtp_session_free(n->zrtp);
     n->zrtp = NULL;
   }
 
-  // Free DHT instance. 释放 DHT 实例。
   if (n->dht) {
     dht_destroy(n->dht);
     n->dht = NULL;
+  }
+
+  if (n->nat) {
+    auto *nat = reinterpret_cast<NatTraversal *>(n->nat);
+    delete nat;
+    n->nat = NULL;
+    n->nat_initialized = 0;
   }
 
   if (n->sock != INVALID_SOCK) CLOSE(n->sock);

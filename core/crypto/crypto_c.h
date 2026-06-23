@@ -1,8 +1,15 @@
+// core/crypto/crypto_c.h
+// Crypto C API for Numotirus. Numotirus 的加密 C API。
+
 #ifndef CRYPTO_C_H
 #define CRYPTO_C_H
 
 #include <stdint.h>
 #include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Opaque keypair handle. 不透明的密钥对句柄。
 typedef struct CryptoKeypair CryptoKeypair;
@@ -29,4 +36,8 @@ int crypto_decrypt_private(const uint8_t* cipher, size_t cipher_len,
                            const uint8_t* seckey,
                            uint8_t** out, size_t* out_len);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif  // CRYPTO_C_H

@@ -4,8 +4,8 @@
 #ifndef P2P_H
 #define P2P_H
 
-#include <stdint.h>
-#include <stddef.h>
+#include <cstdint>
+#include <cstddef>
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,14 +14,14 @@ extern "C" {
 // Opaque node handle. 不透明的节点句柄。
 typedef struct P2PNode P2PNode;
 
-// Callback for ZRTP SAS ready. ZRTP SAS 就绪时的回调函数。
-// sas: 短认证字符串 (4组4位数字). SAS string.
-// user_data: 用户数据，由 p2p_zrtp_start_exchange 传入。User data.
+// ZRTP SAS ready callback. ZRTP SAS 就绪回调。
+// sas: SAS string (4 groups of 4 digits). SAS 字符串（4组4位数字）。
+// user_data: User data passed to p2p_zrtp_start_exchange. 用户数据。
 typedef void (*zrtp_sas_callback)(const char* sas, void* user_data);
 
-// Callback for ZRTP verification result. ZRTP 验证结果回调。
-// confirmed: 1 if user confirmed, 0 if rejected. 1 表示用户确认，0 表示拒绝。
-// user_data: 用户数据。User data.
+// ZRTP verification result callback. ZRTP 验证结果回调。
+// confirmed: 1 if confirmed, 0 if rejected. 1 表示确认，0 表示拒绝。
+// user_data: User data. 用户数据。
 typedef void (*zrtp_result_callback)(int confirmed, void* user_data);
 
 // Create a P2P node. 创建 P2P 节点。
@@ -51,22 +51,14 @@ int p2p_send(P2PNode* n, const char* ip, uint16_t port,
 // Asynchronous ZRTP key exchange. 异步 ZRTP 密钥交换。
 // -------------------------------------------------------------------------
 
-// Start ZRTP key exchange. Does not block.
-// 启动 ZRTP 密钥交换，不阻塞。
-// n: P2P node.
-// on_sas: callback when SAS is generated (called from network thread).
-// on_result: callback when user confirms or rejects (can be called from any thread).
-// user_data: passed to both callbacks.
-// Returns 0 on success, -1 on error. 成功返回0，错误返回-1。
+// Start ZRTP key exchange (non-blocking). 启动 ZRTP 密钥交换（非阻塞）。
 int p2p_zrtp_start_exchange(P2PNode* n,
                             zrtp_sas_callback on_sas,
                             zrtp_result_callback on_result,
                             void* user_data);
 
 // Confirm or reject the ZRTP session after SAS verification.
-// SAS 验证后确认或拒绝会话。
-// n: P2P node.
-// confirmed: 1 to accept, 0 to reject. 1 接受，0 拒绝。
+// SAS 验证后确认或拒绝 ZRTP 会话。
 void p2p_zrtp_confirm(P2PNode* n, int confirmed);
 
 // Destroy node and free resources. 销毁节点并释放资源。
@@ -75,26 +67,24 @@ void p2p_destroy(P2PNode* n);
 // Get DHT instance. 获取 DHT 实例。
 void* p2p_get_dht(P2PNode* n);
 
+// -------------------------------------------------------------------------
 // DHT routing table. DHT 路由表。
-// Create DHT instance. 创建 DHT 实例。
+// -------------------------------------------------------------------------
+
 void* dht_create(const uint8_t* own_id);
-
-// Destroy DHT instance. 销毁 DHT 实例。
 void dht_destroy(void* dht);
-
-// Add or update node in routing table. 在路由表中添加或更新节点。
 void dht_add_node(void* dht, const uint8_t* id, const char* ip, uint16_t port, uint64_t last_seen);
-
-// Find K closest nodes to target. 查找离目标最近的 K 个节点。
-// Returns number of nodes found. 返回找到的节点数。
 int dht_find_closest(void* dht, const uint8_t* target,
                      uint8_t* out_ids, char* out_ips, uint16_t* out_ports, int max_count);
-
-// Print routing table for debugging. 打印路由表用于调试。
 void dht_print(void* dht);
 
-// Get DHT instance. 获取 DHT 实例。
-void* p2p_get_dht(P2PNode* n);
+// -------------------------------------------------------------------------
+// NAT traversal. NAT 穿透。
+// -------------------------------------------------------------------------
+
+// Start NAT traversal to peer. 开始向对方进行 NAT 穿透。
+// peer_candidates: format "ip1:port1,ip2:port2". 格式 "ip1:port1,ip2:port2"。
+int p2p_nat_start_traversal(P2PNode* n, const char* peer_candidates);
 
 #ifdef __cplusplus
 }
