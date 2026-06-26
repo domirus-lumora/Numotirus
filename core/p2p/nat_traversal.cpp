@@ -4,7 +4,11 @@
 #include "nat_traversal.hpp"
 #include "udp_hole_punch.hpp"
 #include "port_prediction.hpp"
+
+#ifdef HAVE_LIBJUICE
 #include "libjuice_wrapper.hpp"
+#endif
+
 #include <unistd.h>
 #include <cstring>
 #include <thread>
@@ -116,12 +120,12 @@ std::string NatTraversal::Impl::CandidateKey(const Candidate& c) const {
 }
 
 void NatTraversal::Impl::TryUdpHolePunch(const Candidate& target) {
-    std::cout << "[NAT] UDP 打洞到 " << target.ip << ":" << target.port << std::endl;
+    std::cout << "[NAT] UDP 打洞到 " << target.ip << ":" << target.port << " / UDP hole punch to " << target.ip << ":" << target.port << std::endl;
 
     StartUdpHolePunch(local_port_, stun_server_, target.ip, target.port,
         [this](bool success, const std::string& peer_ip, uint16_t peer_port) {
             if (success && !cancelled_.load()) {
-                std::cout << "[NAT] ✅ UDP 打洞成功：" << peer_ip << ":" << peer_port << std::endl;
+                std::cout << "[NAT] ✅ UDP 打洞成功：" << peer_ip << ":" << peer_port << " / UDP hole punch succeeded: " << peer_ip << ":" << peer_port << std::endl;
                 Candidate peer;
                 peer.ip = peer_ip;
                 peer.port = peer_port;
@@ -136,17 +140,17 @@ void NatTraversal::Impl::TryUdpHolePunch(const Candidate& target) {
 }
 
 void NatTraversal::Impl::TryPortPrediction(const Candidate& target) {
-    std::cout << "[NAT] 端口预测到 " << target.ip << ":" << target.port << std::endl;
+    std::cout << "[NAT] 端口预测到 " << target.ip << ":" << target.port << " / Port prediction to " << target.ip << ":" << target.port << std::endl;
 
     auto predicted_ports = PredictSymmetricNatPorts(local_port_, stun_server_);
     if (predicted_ports.empty()) {
-        std::cout << "[NAT] 没有可用的预测端口" << std::endl;
+        std::cout << "[NAT] 没有可用的预测端口 / No predicted ports available" << std::endl;
         return;
     }
 
     bool success = BirthdayAttackOnSymmetricNat(local_port_, target.ip, target.port, predicted_ports);
     if (success && !cancelled_.load()) {
-        std::cout << "[NAT] ✅ 端口预测成功" << std::endl;
+        std::cout << "[NAT] ✅ 端口预测成功 / Port prediction succeeded" << std::endl;
         Candidate peer;
         peer.ip = target.ip;
         peer.port = target.port;
@@ -154,38 +158,42 @@ void NatTraversal::Impl::TryPortPrediction(const Candidate& target) {
         callback_(true, peer);
         running_.store(false);
     } else {
-        std::cout << "[NAT] ❌ 端口预测失败" << std::endl;
+        std::cout << "[NAT] ❌ 端口预测失败 / Port prediction failed" << std::endl;
     }
 }
 
 void NatTraversal::Impl::TryIce(const Candidate& target) {
-    std::cout << "[NAT] ICE 到 " << target.ip << ":" << target.port << std::endl;
+#ifdef HAVE_LIBJUICE
+    std::cout << "[NAT] ICE 到 " << target.ip << ":" << target.port << " / ICE to " << target.ip << ":" << target.port << std::endl;
 
     IceAgent agent;
     bool initialized = agent.Initialize(local_port_, stun_server_,
         [](IceState state) {
-            std::cout << "[ICE] 状态：" << static_cast<int>(state) << std::endl;
+            std::cout << "[ICE] 状态：" << static_cast<int>(state) << " / State: " << static_cast<int>(state) << std::endl;
         },
         [](const std::string& sdp) {
-            std::cout << "[ICE] 候选地址：" << sdp << std::endl;
+            std::cout << "[ICE] 候选地址：" << sdp << " / Candidate: " << sdp << std::endl;
         },
         [](const uint8_t* data, size_t len) {
-            std::cout << "[ICE] 收到 " << len << " 字节" << std::endl;
+            std::cout << "[ICE] 收到 " << len << " 字节 / Received " << len << " bytes" << std::endl;
         }
     );
 
     if (!initialized) {
-        std::cout << "[NAT] ICE 初始化失败" << std::endl;
+        std::cout << "[NAT] ICE 初始化失败 / ICE initialization failed" << std::endl;
         return;
     }
 
     agent.GatherCandidates();
     std::string local_sdp = agent.GetLocalDescription();
     if (!local_sdp.empty()) {
-        std::cout << "[ICE] 本地 SDP：" << local_sdp << std::endl;
+        std::cout << "[ICE] 本地 SDP：" << local_sdp << " / Local SDP: " << local_sdp << std::endl;
     }
 
-    std::cout << "[ICE] ICE 需要 SDP 交换，CLI 模式未实现" << std::endl;
+    std::cout << "[ICE] ICE 需要信令交换，CLI 模式未实现 / ICE requires signaling exchange, CLI mode not implemented" << std::endl;
+#else
+    std::cout << "[NAT] ICE 不可用（未编译 libjuice 支持） / ICE unavailable (libjuice support not compiled)" << std::endl;
+#endif
 }
 
 void NatTraversal::Impl::PunchLoop() {
