@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include "dht_c.h"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -304,19 +305,43 @@ P2PNode *p2p_create(uint16_t port) {
 // Start the node. 启动节点。
 // -------------------------------------------------------------------------
 int p2p_start(P2PNode *n) {
-  if (!n) return -1;
-  n->running = 1;
+    if (!n) return -1;
+    n->running = 1;
+
+    // ============================================================
+    // DHT 自动引导 - 从 BitTorrent 公共网络获取节点
+    // ============================================================
+    if (n->dht && n->sock != INVALID_SOCK) {
+        std::cout << "[P2P] Bootstrapping DHT from public BitTorrent nodes...\n";
+        std::cout << "[P2P] This may take a few seconds...\n";
+        
+        // 获取自己的节点 ID（公钥前 20 字节）
+        const uint8_t* own_id = n->pub;
+        
+        // 引导并加入路由表
+        int added = dht_bootstrap_and_add(n->dht, n->sock, own_id);
+        
+        if (added > 0) {
+            std::cout << "[P2P] DHT bootstrap complete: " << added << " nodes added.\n";
+            int size = dht_get_size(n->dht);
+            std::cout << "[P2P] DHT routing table now has " << size << " nodes.\n";
+        } else {
+            std::cout << "[P2P] DHT bootstrap failed. Routing table may be empty.\n";
+            std::cout << "[P2P] Try again later or check network connectivity.\n";
+        }
+    }
+    // ============================================================
 
 #ifdef _WIN32
-  n->th = CreateThread(NULL, 0, recv_loop, n, 0, NULL);
-  if (!n->th) return -1;
-  n->kcp_th = CreateThread(NULL, 0, kcp_update_loop, n, 0, NULL);
-  if (!n->kcp_th) return -1;
+    n->th = CreateThread(NULL, 0, recv_loop, n, 0, NULL);
+    if (!n->th) return -1;
+    n->kcp_th = CreateThread(NULL, 0, kcp_update_loop, n, 0, NULL);
+    if (!n->kcp_th) return -1;
 #else
-  if (pthread_create(&n->th, NULL, recv_loop, n) != 0) return -1;
-  if (pthread_create(&n->kcp_th, NULL, kcp_update_loop, n) != 0) return -1;
+    if (pthread_create(&n->th, NULL, recv_loop, n) != 0) return -1;
+    if (pthread_create(&n->kcp_th, NULL, kcp_update_loop, n) != 0) return -1;
 #endif
-  return 0;
+    return 0;
 }
 
 void p2p_set_callback(P2PNode *n, void (*cb)(const char *, uint16_t, const uint8_t *, size_t)) {
