@@ -116,6 +116,10 @@ A Windows executable `tct_demo.exe` is included for quick testing, compiled by t
 
 **Note**: This binary is for testing only. For production use, please compile from source.
 
+## Citation
+
+Thanks for the [EML paper](https://arxiv.org/html/2603.21852v2)'s author discover about EML.
+
 ## Author
 
 Domirus / [domirus-lumora](https://github.com/domirus-lumora)

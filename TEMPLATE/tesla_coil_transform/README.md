@@ -116,6 +116,10 @@ int main() {
 - **输出（密文）**：`std::vector<uint8_t>`，格式为 `[nonce(24字节)] + [XChaCha20-Poly1305密文]`
 - **密钥**：`uint64_t secret`（混淆层密钥）+ `std::array<uint8_t, 32> key`（加密密钥）
 
+## 引用
+
+特别感谢[EML论文](https://arxiv.org/html/2603.21852v2)作者的发现。
+
 ## 作者
 
 Domirus / [domirus-lumora](https://github.com/domirus-lumora)
