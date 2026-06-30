@@ -1,12 +1,13 @@
 // core/p2p/nat_stun.cpp
-// STUN client implementation. STUN 客户端实现。
+// STUN client for NAT traversal with support for symmetric NAT learning.
+// STUN 客户端，用于 NAT 穿透，支持对称型 NAT 学习。
 
 #include "nat_stun.hpp"
 #include <cstring>
 #include <random>
 #include <chrono>
-#include <string>
-#include <vector>
+#include <iostream>
+#include <thread>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -24,41 +25,59 @@ typedef int socklen_t;
 namespace numotirus {
 namespace nat {
 
-// STUN attribute types. STUN 属性类型。
-enum StunAttr : uint16_t {
-    kAttrMappedAddress = 0x0001,
-    kAttrXorMappedAddress = 0x0020,
-};
+// ============================================================
+// STUN Protocol Structures. STUN 协议结构。
+// ============================================================
 
-// STUN header. STUN 头部。
+// STUN header (RFC 5389). STUN 头部（RFC 5389）。
 struct StunHeader {
-    uint16_t type;
-    uint16_t length;
-    uint8_t transaction_id[kStunTransactionIdSize];
+    uint16_t type;          // Message type. 消息类型。
+    uint16_t length;        // Message length (excluding header). 消息长度（不含头部）。
+    uint8_t transaction_id[kStunTransactionIdSize];  // Transaction ID. 事务 ID。
 } __attribute__((packed));
 
-// XOR mapped address attribute. XOR 映射地址属性。
+// XOR-MAPPED-ADDRESS attribute. XOR-MAPPED-ADDRESS 属性。
 struct XorMappedAddressAttr {
-    uint16_t type;
-    uint16_t length;
-    uint8_t reserved;
-    uint8_t family;
-    uint16_t port;
-    uint8_t address[4];
+    uint16_t type;          // Attribute type. 属性类型。
+    uint16_t length;        // Attribute length. 属性长度。
+    uint8_t reserved;       // MUST be 0. 必须为 0。
+    uint8_t family;         // 1 = IPv4. 1 表示 IPv4。
+    uint16_t port;          // XOR'd port. XOR 后的端口。
+    uint8_t address[4];     // XOR'd IPv4 address. XOR 后的 IPv4 地址。
 } __attribute__((packed));
 
-std::vector<uint8_t> StunClient::BuildBindingRequest() {
-    // Generate transaction ID. 生成事务 ID。
+// ============================================================
+// StunClient Implementation. StunClient 实现。
+// ============================================================
+
+StunClient::StunClient() {
+    GenerateTransactionId();
+}
+
+void StunClient::GenerateTransactionId() {
     std::random_device rd;
     std::mt19937 gen(rd());
     for (auto& b : transaction_id_) {
-        b = static_cast<uint8_t>(gen() & 0xff);
+        b = static_cast<uint8_t>(gen() & 0xFF);
     }
+}
 
-    StunHeader header;
+uint32_t StunClient::XorDecryptAddress(uint32_t addr) const {
+    return addr ^ kStunMagicCookie;
+}
+
+uint16_t StunClient::XorDecryptPort(uint16_t port) const {
+    // XOR with the high 16 bits of the magic cookie. 与 magic cookie 的高 16 位异或。
+    return port ^ (static_cast<uint16_t>(kStunMagicCookie >> 16));
+}
+
+std::vector<uint8_t> StunClient::BuildBindingRequest() {
+    GenerateTransactionId();
+
+    StunHeader header = {};
     header.type = htons(static_cast<uint16_t>(StunMethod::kBinding) |
                         static_cast<uint16_t>(StunClass::kRequest));
-    header.length = 0;
+    header.length = 0;  // No attributes. 无属性。
     std::memcpy(header.transaction_id, transaction_id_.data(), kStunTransactionIdSize);
 
     std::vector<uint8_t> result(sizeof(header));
@@ -67,19 +86,22 @@ std::vector<uint8_t> StunClient::BuildBindingRequest() {
 }
 
 bool StunClient::ParseResponse(const uint8_t* data, size_t len, MappedAddress& out) {
-    if (len < kStunHeaderSize) return false;
+    if (len < kStunHeaderSize) {
+        return false;
+    }
 
     const StunHeader* header = reinterpret_cast<const StunHeader*>(data);
     uint16_t msg_type = ntohs(header->type);
     uint16_t msg_class = msg_type & 0x0110;
 
-    // Check if it's a success response. 检查是否为成功响应。
+    // Check for success response. 检查是否为成功响应。
     if (msg_class != static_cast<uint16_t>(StunClass::kSuccessResponse)) {
         return false;
     }
 
     // Check transaction ID. 检查事务 ID。
     if (std::memcmp(header->transaction_id, transaction_id_.data(), kStunTransactionIdSize) != 0) {
+        // Transaction ID mismatch. 事务 ID 不匹配。
         return false;
     }
 
@@ -94,25 +116,47 @@ bool StunClient::ParseResponse(const uint8_t* data, size_t len, MappedAddress& o
         uint16_t attr_len = ntohs(*attr_len_ptr);
         pos += 4;
 
-        if (attr_type == kAttrXorMappedAddress || attr_type == kAttrMappedAddress) {
+        // Check for XOR-MAPPED-ADDRESS or MAPPED-ADDRESS.
+        // 检查 XOR-MAPPED-ADDRESS 或 MAPPED-ADDRESS。
+        if (attr_type == static_cast<uint16_t>(StunAttribute::kXorMappedAddress) ||
+            attr_type == static_cast<uint16_t>(StunAttribute::kMappedAddress)) {
+
+            if (pos + attr_len > len || attr_len < 8) {
+                pos += attr_len;
+                continue;
+            }
+
             const XorMappedAddressAttr* addr_attr =
                 reinterpret_cast<const XorMappedAddressAttr*>(data + pos);
+
             uint16_t port = ntohs(addr_attr->port);
-            if (attr_type == kAttrXorMappedAddress) {
-                port ^= 0x2112;  // Magic cookie XOR for port (RFC 5389).
+            if (attr_type == static_cast<uint16_t>(StunAttribute::kXorMappedAddress)) {
+                port = XorDecryptPort(port);
+            }
+
+            // IPv4 only (family = 1). 仅 IPv4（family = 1）。
+            if (addr_attr->family != 1) {
+                pos += attr_len;
+                continue;
+            }
+
+            // For XOR-MAPPED-ADDRESS, address is XOR'd with magic cookie.
+            // 对于 XOR-MAPPED-ADDRESS，地址与 magic cookie 异或。
+            uint32_t addr;
+            std::memcpy(&addr, addr_attr->address, 4);
+            if (attr_type == static_cast<uint16_t>(StunAttribute::kXorMappedAddress)) {
+                addr = XorDecryptAddress(addr);
             }
 
             char ip_str[INET_ADDRSTRLEN];
-            struct in_addr addr;
-            std::memcpy(&addr, addr_attr->address, 4);
-            if (attr_type == kAttrXorMappedAddress) {
-                uint32_t magic_cookie = 0x2112A442;
-                addr.s_addr ^= htonl(magic_cookie);
-            }
+            struct in_addr in_addr;
+            in_addr.s_addr = addr;
+            inet_ntop(AF_INET, &in_addr, ip_str, INET_ADDRSTRLEN);
 
-            inet_ntop(AF_INET, &addr, ip_str, INET_ADDRSTRLEN);
             out.ip = ip_str;
             out.port = port;
+            out.family = addr_attr->family;
+
             return true;
         }
 
@@ -131,14 +175,12 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
     int timeout_ms) {
 
 #ifdef _WIN32
-    // Initialize Winsock. 初始化 Winsock。
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         return std::nullopt;
     }
 #endif
 
-    // Create UDP socket. 创建 UDP 套接字。
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
 #ifdef _WIN32
@@ -180,8 +222,10 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
 
     // Send request. 发送请求。
     auto request = BuildBindingRequest();
-    if (sendto(sock, reinterpret_cast<const char*>(request.data()), request.size(), 0,
-               reinterpret_cast<struct sockaddr*>(&server_addr), sizeof(server_addr)) < 0) {
+    int sent = sendto(sock, reinterpret_cast<const char*>(request.data()), request.size(), 0,
+                      reinterpret_cast<struct sockaddr*>(&server_addr), sizeof(server_addr));
+
+    if (sent < 0) {
 #ifdef _WIN32
         closesocket(sock);
         WSACleanup();
@@ -192,11 +236,12 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
     }
 
     // Receive response. 接收响应。
-    uint8_t buffer[1024];
-    struct sockaddr_in from;
-    socklen_t from_len = sizeof(from);
+    uint8_t buffer[kStunMaxResponseSize];
+    struct sockaddr_in from_addr;
+    socklen_t from_len = sizeof(from_addr);
+
     int n = recvfrom(sock, reinterpret_cast<char*>(buffer), sizeof(buffer), 0,
-                     reinterpret_cast<struct sockaddr*>(&from), &from_len);
+                     reinterpret_cast<struct sockaddr*>(&from_addr), &from_len);
 
 #ifdef _WIN32
     closesocket(sock);
@@ -214,7 +259,91 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
         return std::nullopt;
     }
 
+    // If we got a response but the address is empty, fallback to from address.
+    // 如果收到响应但地址为空，回退到 from 地址。
+    if (!addr.IsValid()) {
+        char ip_str[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, INET_ADDRSTRLEN);
+        addr.ip = ip_str;
+        addr.port = ntohs(from_addr.sin_port);
+        addr.family = 1;
+    }
+
     return addr;
+}
+
+std::vector<MappedAddress> StunClient::QueryMultiple(
+    const std::string& server_host,
+    uint16_t server_port,
+    int count,
+    int timeout_ms) {
+
+    std::vector<MappedAddress> results;
+    results.reserve(count);
+
+    for (int i = 0; i < count; ++i) {
+        auto addr = QueryPublicAddress(server_host, server_port, timeout_ms);
+        if (addr.has_value()) {
+            results.push_back(*addr);
+        }
+        // Small delay between queries to let NAT state settle.
+        // 查询之间加小延迟，让 NAT 状态稳定。
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    return results;
+}
+
+// ============================================================
+// Convenience functions. 便捷函数。
+// ============================================================
+
+std::optional<MappedAddress> QueryStun(
+    const std::string& server_host,
+    uint16_t server_port,
+    int timeout_ms) {
+
+    StunClient client;
+    return client.QueryPublicAddress(server_host, server_port, timeout_ms);
+}
+
+bool IsSymmetricNat(
+    const std::string& server_host,
+    uint16_t server_port,
+    int samples) {
+
+    if (samples < 2) {
+        samples = 5;
+    }
+
+    StunClient client;
+    auto results = client.QueryMultiple(server_host, server_port, samples, 2000);
+
+    if (results.size() < 2) {
+        std::cout << "[STUN] Insufficient data to detect NAT type.\n";
+        return false;
+    }
+
+    // Check if ports change across queries (symmetric NAT indicator).
+    // 检查是否跨查询时端口发生变化（对称型 NAT 指标）。
+    uint16_t first_port = results[0].port;
+    bool symmetric = false;
+
+    for (size_t i = 1; i < results.size(); ++i) {
+        if (results[i].port != first_port) {
+            symmetric = true;
+            std::cout << "[STUN] Ports vary: " << first_port << " -> " << results[i].port
+                      << " (likely symmetric NAT)\n";
+            break;
+        }
+    }
+
+    if (!symmetric) {
+        std::cout << "[STUN] Ports consistent: " << first_port
+                  << " (likely cone NAT)\n";
+    }
+
+    return symmetric;
 }
 
 } // namespace nat

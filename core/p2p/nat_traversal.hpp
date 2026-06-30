@@ -1,74 +1,91 @@
 // core/p2p/nat_traversal.hpp
-// NAT traversal coordinator. NAT 穿透协调器。
+// NAT traversal coordinator with multi-strategy support.
+// NAT 穿透协调器，支持多策略。
 
 #pragma once
 
 #include "nat_stun.hpp"
+#include "port_prediction.hpp"
 #include <string>
 #include <vector>
 #include <functional>
-#include <cstdint>
 #include <memory>
+#include <cstdint>
+#include <atomic>
 
 namespace numotirus {
 namespace nat {
 
-// Candidate type. 候选地址类型。
+// Candidate types. 候选地址类型。
 enum class CandidateType : uint8_t {
-    kHost,      // 本地地址 / Local IP
-    kPublic,    // 公网地址（STUN获取）/ Public IP (via STUN)
-    kRelay,     // 中继地址 / Relay address
+    kHost,      // Local address. 本地地址。
+    kPublic,    // Public address (via STUN). 公网地址（通过 STUN）。
+    kRelay,     // Relay address. 中继地址。
 };
 
 // ICE candidate. ICE 候选地址。
 struct Candidate {
-    CandidateType type;
+    CandidateType type = CandidateType::kHost;
     std::string ip;
-    uint16_t port;
-    std::string foundation;  // 用于去重 / For deduplication
-    int priority;            // 优先级 / Priority
+    uint16_t port = 0;
+    std::string foundation;  // For deduplication. 用于去重。
+    int priority = 0;
 
-    bool operator==(const Candidate& other) const;
+    bool operator==(const Candidate& other) const {
+        return ip == other.ip && port == other.port;
+    }
 };
 
-// Callback when traversal completes. 穿透完成时的回调。
-// success: true if direct connection established. 是否成功建立直连。
-// public_ip: 对方的公网地址（如果成功）/ Peer's public address (if success).
+// Traversal result callback. 穿透结果回调。
 using TraversalCallback = std::function<void(bool success, const Candidate& peer_candidate)>;
 
-// NAT traversal coordinator. NAT 穿透协调器。
+// Strategy used for traversal. 穿透使用的策略。
+enum class TraversalStrategy {
+    kNone,
+    kDirect,        // Direct UDP. 直接 UDP。
+    kHolePunch,     // UDP hole punching. UDP 打洞。
+    kPortPrediction,// Port prediction. 端口预测。
+    kIce,           // ICE (requires TURN). ICE（需要 TURN）。
+};
+
+// NAT traversal coordinator.
+// NAT 穿透协调器。
 class NatTraversal {
 public:
     NatTraversal();
     ~NatTraversal();
 
-    // Initialize with STUN server address. 用 STUN 服务器地址初始化。
+    // Initialize with STUN server. 用 STUN 服务器初始化。
     bool Initialize(const std::string& stun_server, uint16_t stun_port = kStunPort);
 
     // Set local listening port. 设置本地监听端口。
     void SetLocalPort(uint16_t port);
 
-    // Get local candidates (host + public). 获取本地候选地址（本地 + 公网）。
+    // Get local candidates. 获取本地候选地址。
     std::vector<Candidate> GetLocalCandidates() const;
 
     // Start traversal to peer. 开始向对方穿透。
-    // peer_candidates: 对方的候选地址列表。
-    // callback: 穿透完成回调。
     void StartTraversal(const std::vector<Candidate>& peer_candidates,
                         TraversalCallback callback);
 
-    // Cancel ongoing traversal. 取消正在进行的穿透。
+    // Cancel current traversal. 取消当前穿透。
     void CancelTraversal();
 
-    // Add a candidate discovered via DHT / signaling. 添加通过 DHT/信令发现的候选地址。
+    // Add a peer candidate discovered via signaling.
+    // 添加通过信令发现的对方候选地址。
     void AddPeerCandidate(const Candidate& candidate);
 
-    // Send punch packet to target. 向目标发送打洞包。
-    bool SendPunchPacket(const Candidate& target);
+    // Get the last successful strategy. 获取最后一次成功的策略。
+    TraversalStrategy GetLastStrategy() const { return last_strategy_; }
+
+    // Check if currently traversing. 检查是否正在穿透。
+    bool IsRunning() const { return running_.load(); }
 
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
+    std::atomic<bool> running_{false};
+    TraversalStrategy last_strategy_ = TraversalStrategy::kNone;
 };
 
 } // namespace nat

@@ -75,7 +75,7 @@ Core languages: **C11 + C++20**
 - Comments: English first, then Chinese. Format: `// English text. 中文文本。`
 - AI-generated code: Allowed, but you must understand every line, test yourself, and declare in PR
 
-Full guide: see `CODE_STYLE.md`
+Full guide: see [`CODING_STYLE.md`](./ENG_CODING_STYLE.md)
 
 ## Code of Conduct
 

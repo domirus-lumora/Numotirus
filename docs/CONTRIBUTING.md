@@ -52,7 +52,7 @@
 
 ### PR 描述
 
-必须包含：`Closes #(issue 编号)`
+如果有，就必须包含：`Closes #(issue 编号)`
 
 ### 审核要求（分阶段）
 
@@ -75,7 +75,7 @@
 - 代码注释：英文在前，中文在后，格式 `// English text. 中文文本。`
 - AI 生成代码：允许，但必须理解每一行、自己测试、PR 中声明
 
-完整规范见 `CODE_STYLE.md`
+完整规范见 [`CODING_STYLE.md`](./CODING_STYLE.md)
 
 ## 行为准则
 

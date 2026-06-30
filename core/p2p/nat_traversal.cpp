@@ -1,5 +1,6 @@
 // core/p2p/nat_traversal.cpp
-// NAT traversal coordinator implementation. NAT 穿透协调器实现。
+// NAT traversal coordinator with multi-strategy support.
+// NAT 穿透协调器，支持多策略。
 
 #include "nat_traversal.hpp"
 #include "udp_hole_punch.hpp"
@@ -19,6 +20,7 @@
 #include <mutex>
 #include <map>
 #include <iostream>
+#include <sstream>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -31,9 +33,17 @@ typedef int socklen_t;
 namespace numotirus {
 namespace nat {
 
-bool Candidate::operator==(const Candidate& other) const {
-    return ip == other.ip && port == other.port && type == other.type;
+// ============================================================
+// Candidate helper. 候选地址辅助。
+// ============================================================
+
+static std::string CandidateKey(const Candidate& c) {
+    return c.ip + ":" + std::to_string(c.port);
 }
+
+// ============================================================
+// NatTraversal::Impl. 实现类。
+// ============================================================
 
 struct NatTraversal::Impl {
     int sock_ = -1;
@@ -41,6 +51,9 @@ struct NatTraversal::Impl {
     std::string stun_server_;
     uint16_t stun_port_ = kStunPort;
     StunClient stun_client_;
+    PortPredictor port_predictor_;
+    std::unique_ptr<MultiHolePuncher> puncher_;
+
     std::vector<Candidate> local_candidates_;
     std::vector<Candidate> peer_candidates_;
     std::atomic<bool> running_{false};
@@ -49,15 +62,31 @@ struct NatTraversal::Impl {
     std::mutex mutex_;
     std::map<std::string, bool> attempted_;
 
+    // Learning phase. 学习阶段。
+    bool learning_phase_ = true;
+    int learning_samples_ = 0;
+    std::vector<uint16_t> learning_ports_;
+
+    Impl() : puncher_(std::make_unique<MultiHolePuncher>()) {}
+
     bool CreateSocket();
     void CloseSocket();
     void GatherLocalCandidates();
     void DiscoverPublicAddress();
-    void PunchLoop();
-    std::string CandidateKey(const Candidate& c) const;
-    void TryUdpHolePunch(const Candidate& target);
+    void RunTraversal();
+    void TryDirect(const Candidate& target);
+    void TryHolePunch(const Candidate& target);
     void TryPortPrediction(const Candidate& target);
     void TryIce(const Candidate& target);
+    void LearnNATBehavior(const std::string& target_key);
+
+    // Learning: send probes to STUN to observe NAT behavior.
+    // 学习：向 STUN 发送探测包以观察 NAT 行为。
+    void LearnPortPattern();
+
+    std::string TargetKey(const Candidate& c) const {
+        return c.ip + ":" + std::to_string(c.port);
+    }
 };
 
 bool NatTraversal::Impl::CreateSocket() {
@@ -66,7 +95,7 @@ bool NatTraversal::Impl::CreateSocket() {
     sock_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock_ < 0) return false;
 
-    struct sockaddr_in addr{};
+    struct sockaddr_in addr = {};
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(local_port_);
@@ -75,6 +104,9 @@ bool NatTraversal::Impl::CreateSocket() {
         CloseSocket();
         return false;
     }
+
+    // Initialize puncher with this socket. 用此套接字初始化打洞器。
+    puncher_->Initialize(sock_, stun_server_);
 
     return true;
 }
@@ -88,6 +120,7 @@ void NatTraversal::Impl::CloseSocket() {
 #endif
         sock_ = -1;
     }
+    puncher_->Cancel();
 }
 
 void NatTraversal::Impl::GatherLocalCandidates() {
@@ -100,6 +133,10 @@ void NatTraversal::Impl::GatherLocalCandidates() {
     host.foundation = "host";
     host.priority = 126;
     local_candidates_.push_back(host);
+
+    // Also add LAN IP if we can find it. 如果可能，也添加局域网 IP。
+    // This is simplified; in production you'd enumerate interfaces.
+    // 简化版本；在生产环境中应枚举所有接口。
 }
 
 void NatTraversal::Impl::DiscoverPublicAddress() {
@@ -112,98 +149,212 @@ void NatTraversal::Impl::DiscoverPublicAddress() {
         pub.foundation = "stun";
         pub.priority = 200;
         local_candidates_.push_back(pub);
+
+        std::cout << "[NAT] Public address: " << pub.ip << ":" << pub.port << "\n";
     }
 }
 
-std::string NatTraversal::Impl::CandidateKey(const Candidate& c) const {
-    return c.ip + ":" + std::to_string(c.port);
+void NatTraversal::Impl::LearnPortPattern() {
+    // Send 5 probes to STUN to observe NAT port allocation behavior.
+    // 向 STUN 发送 5 次探测，观察 NAT 端口分配行为。
+    std::cout << "[NAT] Learning NAT behavior...\n";
+
+    learning_ports_.clear();
+    for (int i = 0; i < 5; ++i) {
+        auto result = stun_client_.QueryPublicAddress(stun_server_, stun_port_, 1000);
+        if (result.has_value()) {
+            learning_ports_.push_back(result->port);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
+    if (learning_ports_.size() >= 2) {
+        // Record to predictor for future use. 记录到预测器中供以后使用。
+        for (uint16_t port : learning_ports_) {
+            port_predictor_.RecordMapping("stun_learn", port);
+        }
+        std::cout << "[NAT] Learned " << learning_ports_.size() << " port samples.\n";
+        std::cout << "[NAT] Pattern: ";
+        switch (port_predictor_.GetPattern("stun_learn")) {
+            case NatPattern::kLinearUp:
+                std::cout << "Linear Up\n";
+                break;
+            case NatPattern::kLinearDown:
+                std::cout << "Linear Down\n";
+                break;
+            case NatPattern::kRandom:
+                std::cout << "Random (unpredictable)\n";
+                break;
+            default:
+                std::cout << "Unknown (insufficient data)\n";
+                break;
+        }
+    }
+
+    learning_phase_ = false;
 }
 
-void NatTraversal::Impl::TryUdpHolePunch(const Candidate& target) {
-    std::cout << "[NAT] UDP 打洞到 " << target.ip << ":" << target.port << " / UDP hole punch to " << target.ip << ":" << target.port << std::endl;
+void NatTraversal::Impl::TryDirect(const Candidate& target) {
+    std::cout << "[NAT] Trying direct UDP to " << target.ip << ":" << target.port << "\n";
 
-    StartUdpHolePunch(local_port_, stun_server_, target.ip, target.port,
-        [this](bool success, const std::string& peer_ip, uint16_t peer_port) {
-            if (success && !cancelled_.load()) {
-                std::cout << "[NAT] ✅ UDP 打洞成功：" << peer_ip << ":" << peer_port << " / UDP hole punch succeeded: " << peer_ip << ":" << peer_port << std::endl;
-                Candidate peer;
-                peer.ip = peer_ip;
-                peer.port = peer_port;
-                peer.type = CandidateType::kPublic;
+    if (sock_ < 0) return;
+
+    struct sockaddr_in addr = {};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(target.port);
+    if (inet_pton(AF_INET, target.ip.c_str(), &addr.sin_addr) != 1) {
+        return;
+    }
+
+    const char* test_msg = "PING";
+    if (sendto(sock_, test_msg, strlen(test_msg), 0,
+               reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) > 0) {
+
+        // Wait for response. 等待响应。
+#ifdef _WIN32
+        DWORD timeout = 500;
+        setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+#else
+        struct timeval tv = {0, 500000};
+        setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
+
+        uint8_t buffer[64];
+        struct sockaddr_in from_addr;
+        socklen_t from_len = sizeof(from_addr);
+        int n = recvfrom(sock_, reinterpret_cast<char*>(buffer), sizeof(buffer), 0,
+                         reinterpret_cast<struct sockaddr*>(&from_addr), &from_len);
+
+        if (n > 0 && !cancelled_.load()) {
+            char ip_str[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, INET_ADDRSTRLEN);
+            std::cout << "[NAT] ✅ Direct UDP succeeded!\n";
+            Candidate peer;
+            peer.ip = ip_str;
+            peer.port = ntohs(from_addr.sin_port);
+            peer.type = CandidateType::kPublic;
+            if (callback_) {
                 callback_(true, peer);
                 running_.store(false);
             }
         }
-    );
+    }
+}
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+void NatTraversal::Impl::TryHolePunch(const Candidate& target) {
+    std::cout << "[NAT] UDP hole punch to " << target.ip << ":" << target.port << "\n";
+
+    // Use multi-port puncher with a focused port list.
+    // 使用多端口打洞器，使用集中的端口列表。
+    std::vector<uint16_t> ports;
+    ports.push_back(target.port);
+
+    // Add ports from prediction. 添加预测端口。
+    auto target_key = TargetKey(target);
+    auto predicted = port_predictor_.PredictPorts(target_key, 10);
+    for (uint16_t p : predicted) {
+        if (std::find(ports.begin(), ports.end(), p) == ports.end()) {
+            ports.push_back(p);
+        }
+    }
+
+    // Also add a simple range around the target. 也在目标端口周围添加一个范围。
+    auto range_ports = GeneratePortRange(target.port, 5);
+    for (uint16_t p : range_ports) {
+        if (std::find(ports.begin(), ports.end(), p) == ports.end() && p != target.port) {
+            ports.push_back(p);
+        }
+    }
+
+    // Sort by closeness to target port. 按与目标端口的接近程度排序。
+    std::sort(ports.begin(), ports.end(),
+        [target](uint16_t a, uint16_t b) {
+            return std::abs(static_cast<int>(a) - static_cast<int>(target.port)) <
+                   std::abs(static_cast<int>(b) - static_cast<int>(target.port));
+        });
+
+    // Limit to reasonable number. 限制为合理数量。
+    if (ports.size() > 30) {
+        ports.resize(30);
+    }
+
+    std::cout << "[NAT] Probing " << ports.size() << " ports...\n";
+
+    puncher_->Punch(target.ip, ports,
+        [this](const PunchResult& result) {
+            if (result.success && !cancelled_.load()) {
+                std::cout << "[NAT] ✅ UDP hole punch succeeded on port " << result.hit_port << "!\n";
+                Candidate peer;
+                peer.ip = result.peer_ip;
+                peer.port = result.peer_port;
+                peer.type = CandidateType::kPublic;
+                if (callback_) {
+                    callback_(true, peer);
+                    running_.store(false);
+                }
+            }
+        },
+        4000  // 4 second timeout. 4 秒超时。
+    );
 }
 
 void NatTraversal::Impl::TryPortPrediction(const Candidate& target) {
-    std::cout << "[NAT] 端口预测到 " << target.ip << ":" << target.port << " / Port prediction to " << target.ip << ":" << target.port << std::endl;
+    auto target_key = TargetKey(target);
+    auto predicted = port_predictor_.PredictPorts(target_key, 15);
 
-    auto predicted_ports = PredictSymmetricNatPorts(local_port_, stun_server_);
-    if (predicted_ports.empty()) {
-        std::cout << "[NAT] 没有可用的预测端口 / No predicted ports available" << std::endl;
-        return;
+    if (predicted.empty()) {
+        // Fallback: use simple prediction. 回退：使用简单预测。
+        predicted = QuickPredictPorts(target.port, 10);
     }
 
-    bool success = BirthdayAttackOnSymmetricNat(local_port_, target.ip, target.port, predicted_ports);
-    if (success && !cancelled_.load()) {
-        std::cout << "[NAT] ✅ 端口预测成功 / Port prediction succeeded" << std::endl;
-        Candidate peer;
-        peer.ip = target.ip;
-        peer.port = target.port;
-        peer.type = CandidateType::kPublic;
-        callback_(true, peer);
-        running_.store(false);
-    } else {
-        std::cout << "[NAT] ❌ 端口预测失败 / Port prediction failed" << std::endl;
-    }
+    std::cout << "[NAT] Port prediction to " << target.ip << ":" << target.port
+              << " — trying " << predicted.size() << " ports...\n";
+
+    // Use puncher with predicted ports. 使用预测端口进行打洞。
+    puncher_->Punch(target.ip, predicted,
+        [this](const PunchResult& result) {
+            if (result.success && !cancelled_.load()) {
+                std::cout << "[NAT] ✅ Port prediction succeeded on port " << result.hit_port << "!\n";
+                Candidate peer;
+                peer.ip = result.peer_ip;
+                peer.port = result.peer_port;
+                peer.type = CandidateType::kPublic;
+                if (callback_) {
+                    callback_(true, peer);
+                    running_.store(false);
+                }
+            }
+        },
+        3000
+    );
 }
 
 void NatTraversal::Impl::TryIce(const Candidate& target) {
 #ifdef HAVE_LIBJUICE
-    std::cout << "[NAT] ICE 到 " << target.ip << ":" << target.port << " / ICE to " << target.ip << ":" << target.port << std::endl;
-
-    IceAgent agent;
-    bool initialized = agent.Initialize(local_port_, stun_server_,
-        [](IceState state) {
-            std::cout << "[ICE] 状态：" << static_cast<int>(state) << " / State: " << static_cast<int>(state) << std::endl;
-        },
-        [](const std::string& sdp) {
-            std::cout << "[ICE] 候选地址：" << sdp << " / Candidate: " << sdp << std::endl;
-        },
-        [](const uint8_t* data, size_t len) {
-            std::cout << "[ICE] 收到 " << len << " 字节 / Received " << len << " bytes" << std::endl;
-        }
-    );
-
-    if (!initialized) {
-        std::cout << "[NAT] ICE 初始化失败 / ICE initialization failed" << std::endl;
-        return;
-    }
-
-    agent.GatherCandidates();
-    std::string local_sdp = agent.GetLocalDescription();
-    if (!local_sdp.empty()) {
-        std::cout << "[ICE] 本地 SDP：" << local_sdp << " / Local SDP: " << local_sdp << std::endl;
-    }
-
-    std::cout << "[ICE] ICE 需要信令交换，CLI 模式未实现 / ICE requires signaling exchange, CLI mode not implemented" << std::endl;
+    std::cout << "[NAT] ICE to " << target.ip << ":" << target.port << "\n";
+    // ICE implementation would go here.
+    // ICE 实现会放在这里。
+    std::cout << "[ICE] ICE requires TURN server, not available.\n";
 #else
-    std::cout << "[NAT] ICE 不可用（未编译 libjuice 支持） / ICE unavailable (libjuice support not compiled)" << std::endl;
+    std::cout << "[NAT] ICE unavailable (libjuice not compiled)\n";
 #endif
 }
 
-void NatTraversal::Impl::PunchLoop() {
+void NatTraversal::Impl::RunTraversal() {
     if (!callback_) return;
 
-    std::vector<Candidate> targets = peer_candidates_;
+    // Learning phase: observe NAT behavior first.
+    // 学习阶段：先观察 NAT 行为。
+    if (learning_phase_) {
+        LearnPortPattern();
+    }
+
+    // Sort peer candidates by priority. 按优先级排序对方候选地址。
+    auto targets = peer_candidates_;
     std::sort(targets.begin(), targets.end(),
-              [](const Candidate& a, const Candidate& b) {
-                  return a.priority > b.priority;
-              });
+        [](const Candidate& a, const Candidate& b) {
+            return a.priority > b.priority;
+        });
 
     for (const auto& target : targets) {
         if (cancelled_.load()) break;
@@ -215,17 +366,61 @@ void NatTraversal::Impl::PunchLoop() {
             attempted_[key] = true;
         }
 
-        TryUdpHolePunch(target);
-        if (cancelled_.load() || !running_.load()) break;
+        // Record this target for port prediction. 记录此目标用于端口预测。
+        port_predictor_.RecordMapping(TargetKey(target), target.port);
 
-        TryPortPrediction(target);
-        if (cancelled_.load() || !running_.load()) break;
+        // Try strategies in parallel. 并行尝试策略。
+        // We launch them and let whichever succeeds first win.
+        // 我们启动它们，哪个先成功就使用哪个。
+        std::atomic<bool> done{false};
 
-        TryIce(target);
-        if (cancelled_.load() || !running_.load()) break;
+        // Launch direct attempt. 启动直接尝试。
+        std::thread direct_thread([this, &target, &done]() {
+            if (done.load()) return;
+            TryDirect(target);
+            if (!running_.load() || cancelled_.load()) {
+                done.store(true);
+            }
+        });
+
+        // Launch hole punch. 启动打洞。
+        std::thread punch_thread([this, &target, &done]() {
+            if (done.load()) return;
+            TryHolePunch(target);
+            if (!running_.load() || cancelled_.load()) {
+                done.store(true);
+            }
+        });
+
+        // Launch port prediction. 启动端口预测。
+        std::thread pred_thread([this, &target, &done]() {
+            if (done.load()) return;
+            TryPortPrediction(target);
+            if (!running_.load() || cancelled_.load()) {
+                done.store(true);
+            }
+        });
+
+        // Wait for any to succeed or all to fail. 等待任何一个成功或全部失败。
+        int max_wait = 5000;  // 5 seconds total. 总共 5 秒。
+        int elapsed = 0;
+        while (running_.load() && !cancelled_.load() && elapsed < max_wait) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            elapsed += 100;
+        }
+
+        done.store(true);
+
+        if (direct_thread.joinable()) direct_thread.join();
+        if (punch_thread.joinable()) punch_thread.join();
+        if (pred_thread.joinable()) pred_thread.join();
+
+        if (!running_.load() || cancelled_.load()) break;
     }
 
+    // If we get here, all strategies failed. 如果执行到这里，所有策略都失败了。
     if (!cancelled_.load() && callback_) {
+        std::cout << "[NAT] ❌ All strategies failed, fallback needed.\n";
         Candidate fallback;
         fallback.type = CandidateType::kRelay;
         callback_(false, fallback);
@@ -233,9 +428,9 @@ void NatTraversal::Impl::PunchLoop() {
     running_.store(false);
 }
 
-// ============================================================================
+// ============================================================
 // Public interface. 公开接口。
-// ============================================================================
+// ============================================================
 
 NatTraversal::NatTraversal() : impl_(std::make_unique<Impl>()) {}
 
@@ -281,12 +476,13 @@ void NatTraversal::StartTraversal(const std::vector<Candidate>& peer_candidates,
     impl_->DiscoverPublicAddress();
 
     impl_->running_.store(true);
-    std::thread(&Impl::PunchLoop, impl_.get()).detach();
+    std::thread(&Impl::RunTraversal, impl_.get()).detach();
 }
 
 void NatTraversal::CancelTraversal() {
     if (impl_->running_.load()) {
         impl_->cancelled_.store(true);
+        impl_->puncher_->Cancel();
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         impl_->running_.store(false);
     }
@@ -295,15 +491,14 @@ void NatTraversal::CancelTraversal() {
 
 void NatTraversal::AddPeerCandidate(const Candidate& candidate) {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
-    std::string key = impl_->CandidateKey(candidate);
+    std::string key = CandidateKey(candidate);
     for (const auto& c : impl_->peer_candidates_) {
-        if (impl_->CandidateKey(c) == key) return;
+        if (CandidateKey(c) == key) return;
     }
     impl_->peer_candidates_.push_back(candidate);
-}
 
-bool NatTraversal::SendPunchPacket(const Candidate& target) {
-    return true;
+    // Record for port prediction. 记录用于端口预测。
+    impl_->port_predictor_.RecordMapping(impl_->TargetKey(candidate), candidate.port);
 }
 
 } // namespace nat
