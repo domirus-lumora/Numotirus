@@ -38,7 +38,7 @@ $CXX -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o $CXXFLAGS
 $CC -c core/p2p/kcp/ikcp.c -o ikcp.o $CFLAGS
 $CC -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto $CFLAGS
 $CC -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto $CFLAGS
-$CC -c core/p2p/p2p.c -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol $CFLAGS
+$CXX -std=c++20 -c core/p2p/p2p.cpp -o p2p.o $CXXFLAGS
 $CXX -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol $CXXFLAGS
 
 # 需要 iOS 网络权限 / iOS network permissions

@@ -17,7 +17,7 @@ clang++ -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o
 clang -c core/p2p/kcp/ikcp.c -o ikcp.o
 clang -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto
 clang -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto
-clang -c core/p2p/p2p.c -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol
+clang++ -c core/p2p/p2p.cpp -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol
 clang++ -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol
 
 # NAT 模块
