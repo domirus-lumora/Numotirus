@@ -13,6 +13,25 @@
 #include <cstdint>
 #include <atomic>
 
+// ============================================================
+// 跨平台网络头文件 / Cross-platform network headers
+// ============================================================
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <netdb.h>
+#endif
+
+#ifndef INET_ADDRSTRLEN
+#define INET_ADDRSTRLEN 16
+#endif
+
 namespace numotirus {
 namespace nat {
 

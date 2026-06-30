@@ -22,12 +22,25 @@
 #include <iostream>
 #include <sstream>
 
+// ============================================================
+// 跨平台网络头文件 / Cross-platform network headers
+// ============================================================
+
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
 typedef int socklen_t;
 #else
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <netdb.h>
+#endif
+
+#ifndef INET_ADDRSTRLEN
+#define INET_ADDRSTRLEN 16
 #endif
 
 namespace numotirus {
@@ -336,6 +349,7 @@ void NatTraversal::Impl::TryIce(const Candidate& target) {
     // ICE 实现会放在这里。
     std::cout << "[ICE] ICE requires TURN server, not available.\n";
 #else
+    (void)target;
     std::cout << "[NAT] ICE unavailable (libjuice not compiled)\n";
 #endif
 }
