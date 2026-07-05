@@ -38,10 +38,18 @@ $CXX -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o $CXXFLAGS
 $CC -c core/p2p/kcp/ikcp.c -o ikcp.o $CFLAGS
 $CC -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto $CFLAGS
 $CC -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto $CFLAGS
-$CXX -std=c++20 -c core/p2p/p2p.cpp -o p2p.o $CXXFLAGS
-$CXX -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/p2p.cpp -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport $CXXFLAGS
 
-# 需要 iOS 网络权限 / iOS network permissions
+# NAT 模块
+$CXX -std=c++20 -c core/p2p/nat_stun.cpp -o nat_stun.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/udp_hole_punch.cpp -o udp_hole_punch.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/port_prediction.cpp -o port_prediction.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/nat_traversal.cpp -o nat_traversal.o -Icore/p2p $CXXFLAGS
+
+# 传输层模块
+$CXX -std=c++20 -c core/transport/transport.cpp -o transport.o -Icore/p2p -Icore/crypto -Icore/transport $CXXFLAGS
+
 # 打包成静态库 / Package as static library
 ar rcs libnumotirus.a *.o
 

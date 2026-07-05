@@ -1,6 +1,7 @@
 // core/p2p/udp_hole_punch.cpp
-// Multi-port UDP hole punching for NAT traversal.
-// 多端口 UDP 打洞，用于 NAT 穿透。
+// Multi-port UDP hole punching implementation.
+// 多端口 UDP 打洞实现。
+// SPDX-License-Identifier: Apache-2.0
 
 #include "udp_hole_punch.hpp"
 #include <iostream>
@@ -10,6 +11,7 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
+#include <unordered_set>
 #include <map>
 
 #ifdef _WIN32
@@ -30,17 +32,12 @@ typedef int socklen_t;
 namespace numotirus {
 namespace nat {
 
-// ============================================================
-// MultiHolePuncher Implementation. MultiHolePuncher 实现。
-// ============================================================
-
 struct MultiHolePuncher::Impl {
     int sock_ = -1;
     std::string stun_server_;
     std::mutex mutex_;
     std::atomic<bool> cancelled_{false};
-    std::vector<uint16_t> sent_ports_;
-    std::map<uint16_t, uint64_t> sent_times_;
+    std::unordered_set<uint16_t> sent_ports_;   // Fast lookup. 快速查找。
     PunchCallback callback_;
     std::thread worker_thread_;
 
@@ -50,24 +47,14 @@ struct MultiHolePuncher::Impl {
         }
     }
 
-    bool SendPunchPacket(const std::string& ip, uint16_t port, uint16_t src_port);
-    void ReceiveLoop(const std::string& target_ip, const std::vector<uint16_t>& target_ports, int timeout_ms);
+    bool SendPunchPacket(const std::string& ip, uint16_t port);
+    void ReceiveLoop(const std::string& target_ip,
+                     const std::vector<uint16_t>& target_ports,
+                     int timeout_ms);
 };
 
-bool MultiHolePuncher::Impl::SendPunchPacket(const std::string& ip, uint16_t port, uint16_t src_port) {
+bool MultiHolePuncher::Impl::SendPunchPacket(const std::string& ip, uint16_t port) {
     if (sock_ < 0) return false;
-
-    // Bind to specific source port if requested. 如果指定了源端口则绑定。
-    if (src_port != 0) {
-        struct sockaddr_in local_addr = {};
-        local_addr.sin_family = AF_INET;
-        local_addr.sin_addr.s_addr = INADDR_ANY;
-        local_addr.sin_port = htons(src_port);
-        if (bind(sock_, reinterpret_cast<struct sockaddr*>(&local_addr), sizeof(local_addr)) < 0) {
-            // Binding to a specific port may fail, continue anyway.
-            // 绑定到特定端口可能失败，继续尝试。
-        }
-    }
 
     struct sockaddr_in addr = {};
     addr.sin_family = AF_INET;
@@ -79,14 +66,14 @@ bool MultiHolePuncher::Impl::SendPunchPacket(const std::string& ip, uint16_t por
     const char* punch_msg = "PUNCH";
     int sent = sendto(sock_, punch_msg, strlen(punch_msg), 0,
                       reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
-
     return sent > 0;
 }
 
 void MultiHolePuncher::Impl::ReceiveLoop(const std::string& target_ip,
-                                          const std::vector<uint16_t>& target_ports,
-                                          int timeout_ms) {
-    // Set socket timeout. 设置套接字超时。
+                                         const std::vector<uint16_t>& target_ports,
+                                         int timeout_ms) {
+    // Set socket timeout.
+    // 设置套接字超时。
 #ifdef _WIN32
     DWORD timeout = timeout_ms;
     setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
@@ -99,20 +86,20 @@ void MultiHolePuncher::Impl::ReceiveLoop(const std::string& target_ip,
         std::chrono::steady_clock::now().time_since_epoch()
     ).count();
 
-    // Send punch packets to all target ports. 向所有目标端口发送打洞包。
     std::cout << "[HolePunch] Sending to " << target_ports.size() << " ports...\n";
 
+    // Send punch packets to all target ports.
+    // 向所有目标端口发送打洞包。
     int ports_sent = 0;
+    sent_ports_.clear();
     for (uint16_t port : target_ports) {
         if (cancelled_.load()) break;
-        SendPunchPacket(target_ip, port, 0);
-        sent_ports_.push_back(port);
-        sent_times_[port] = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()
-        ).count();
-        ports_sent++;
-
-        // Rate limit: don't flood too fast. 速率限制：不要发送太快。
+        if (SendPunchPacket(target_ip, port)) {
+            sent_ports_.insert(port);
+            ports_sent++;
+        }
+        // Rate limit: don't flood too fast.
+        // 速率限制：不要发送太快。
         if (ports_sent % 10 == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -120,7 +107,8 @@ void MultiHolePuncher::Impl::ReceiveLoop(const std::string& target_ip,
 
     std::cout << "[HolePunch] Sent " << ports_sent << " punch packets. Waiting for response...\n";
 
-    // Wait for response. 等待响应。
+    // Wait for response.
+    // 等待响应。
     uint8_t buffer[1024];
     struct sockaddr_in from_addr;
     socklen_t from_len = sizeof(from_addr);
@@ -130,7 +118,8 @@ void MultiHolePuncher::Impl::ReceiveLoop(const std::string& target_ip,
                          reinterpret_cast<struct sockaddr*>(&from_addr), &from_len);
 
         if (n <= 0) {
-            // Check timeout. 检查超时。
+            // Check timeout.
+            // 检查超时。
             uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()
             ).count();
@@ -141,27 +130,20 @@ void MultiHolePuncher::Impl::ReceiveLoop(const std::string& target_ip,
         }
 
         char ip_str[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, sizeof(ip_str));
         uint16_t from_port = ntohs(from_addr.sin_port);
 
         std::cout << "[HolePunch] Received response from " << ip_str << ":" << from_port << "\n";
 
-        // Check if this port was in our sent list. 检查这个端口是否在我们的发送列表中。
-        bool found = false;
-        for (uint16_t p : sent_ports_) {
-            if (p == from_port) {
-                found = true;
-                break;
-            }
-        }
-
-        if (found && callback_) {
+        // Check if this port was in our sent list.
+        // 检查这个端口是否在我们的发送列表中。
+        if (sent_ports_.find(from_port) != sent_ports_.end() && callback_) {
             PunchResult result;
             result.success = true;
             result.peer_ip = ip_str;
             result.peer_port = from_port;
             result.hit_port = from_port;
-            result.local_port = from_port;
+            result.local_port = from_port; // Actual local port used (same as from_port if symmetric).
             result.latency_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()
             ).count() - start_time;
@@ -171,7 +153,8 @@ void MultiHolePuncher::Impl::ReceiveLoop(const std::string& target_ip,
         }
     }
 
-    // Timeout or cancelled. 超时或取消。
+    // Timeout or cancelled.
+    // 超时或取消。
     if (callback_) {
         PunchResult result;
         result.success = false;
@@ -193,9 +176,9 @@ bool MultiHolePuncher::Initialize(int sock, const std::string& stun_server) {
 }
 
 void MultiHolePuncher::Punch(const std::string& target_ip,
-                              const std::vector<uint16_t>& target_ports,
-                              PunchCallback callback,
-                              int timeout_ms) {
+                             const std::vector<uint16_t>& target_ports,
+                             PunchCallback callback,
+                             int timeout_ms) {
     if (impl_->sock_ < 0 || target_ports.empty()) {
         if (callback) {
             PunchResult result;
@@ -205,16 +188,16 @@ void MultiHolePuncher::Punch(const std::string& target_ip,
         return;
     }
 
-    // Cancel previous run. 取消上一次运行。
+    // Cancel previous run.
+    // 取消上一次运行。
     Cancel();
 
     running_.store(true);
     impl_->cancelled_.store(false);
     impl_->callback_ = callback;
-    impl_->sent_ports_.clear();
-    impl_->sent_times_.clear();
 
-    // Start worker thread. 启动工作线程。
+    // Start worker thread.
+    // 启动工作线程。
     impl_->worker_thread_ = std::thread([this, target_ip, target_ports, timeout_ms]() {
         impl_->ReceiveLoop(target_ip, target_ports, timeout_ms);
         running_.store(false);
@@ -231,24 +214,19 @@ void MultiHolePuncher::Cancel() {
     }
 }
 
-// ============================================================
-// Legacy compatibility functions. 旧版兼容函数。
-// ============================================================
+// Legacy functions (unchanged, but kept for compatibility).
+// 旧版函数（未改动，保留兼容性）。
 
 void StartUdpHolePunch(uint16_t local_port,
                        const std::string& stun_server,
                        const std::string& peer_ip,
                        uint16_t peer_port,
                        PunchCallback callback) {
-    // Legacy wrapper: create a single-port puncher.
-    // 旧版封装：创建一个单端口打洞器。
     (void)stun_server;
-
 #ifdef _WIN32
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
 #endif
-
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
         if (callback) {
@@ -259,7 +237,6 @@ void StartUdpHolePunch(uint16_t local_port,
         return;
     }
 
-    // Bind to local port. 绑定到本地端口。
     struct sockaddr_in local_addr = {};
     local_addr.sin_family = AF_INET;
     local_addr.sin_addr.s_addr = INADDR_ANY;
@@ -274,7 +251,6 @@ void StartUdpHolePunch(uint16_t local_port,
         return;
     }
 
-    // Send punch packet. 发送打洞包。
     struct sockaddr_in peer_addr = {};
     peer_addr.sin_family = AF_INET;
     peer_addr.sin_port = htons(peer_port);
@@ -287,11 +263,9 @@ void StartUdpHolePunch(uint16_t local_port,
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
-    // Wait for response. 等待响应。
     uint8_t buffer[1024];
     struct sockaddr_in from_addr;
     socklen_t from_len = sizeof(from_addr);
-
 #ifdef _WIN32
     DWORD timeout = 2000;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
@@ -302,7 +276,6 @@ void StartUdpHolePunch(uint16_t local_port,
 
     int n = recvfrom(sock, reinterpret_cast<char*>(buffer), sizeof(buffer), 0,
                      reinterpret_cast<struct sockaddr*>(&from_addr), &from_len);
-
     CLOSE_SOCKET(sock);
 #ifdef _WIN32
     WSACleanup();
@@ -310,7 +283,7 @@ void StartUdpHolePunch(uint16_t local_port,
 
     if (n > 0 && callback) {
         char ip_str[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, sizeof(ip_str));
         PunchResult result;
         result.success = true;
         result.peer_ip = ip_str;
@@ -325,7 +298,8 @@ void StartUdpHolePunch(uint16_t local_port,
 }
 
 std::string GetPublicAddressViaStun(const std::string& stun_server) {
-    // Simplified STUN client. 简化的 STUN 客户端。
+    // This function remains as-is for compatibility.
+    // 该函数保持不变以兼容。
     size_t colon = stun_server.find(':');
     if (colon == std::string::npos) return "";
 
@@ -340,7 +314,6 @@ std::string GetPublicAddressViaStun(const std::string& stun_server) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return "";
 
-    // Resolve host. 解析主机。
     struct addrinfo hints = {};
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
@@ -355,7 +328,6 @@ std::string GetPublicAddressViaStun(const std::string& stun_server) {
     server_addr.sin_port = htons(port);
     freeaddrinfo(result);
 
-    // STUN binding request. STUN 绑定请求。
     uint8_t request[] = {
         0x00, 0x01, 0x00, 0x00,
         0x21, 0x12, 0xA4, 0x42,
@@ -368,7 +340,6 @@ std::string GetPublicAddressViaStun(const std::string& stun_server) {
     uint8_t buffer[1024];
     struct sockaddr_in from_addr;
     socklen_t from_len = sizeof(from_addr);
-
 #ifdef _WIN32
     DWORD timeout = 3000;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
@@ -379,7 +350,6 @@ std::string GetPublicAddressViaStun(const std::string& stun_server) {
 
     int n = recvfrom(sock, reinterpret_cast<char*>(buffer), sizeof(buffer), 0,
                      reinterpret_cast<struct sockaddr*>(&from_addr), &from_len);
-
     CLOSE_SOCKET(sock);
 #ifdef _WIN32
     WSACleanup();
@@ -388,7 +358,7 @@ std::string GetPublicAddressViaStun(const std::string& stun_server) {
     if (n < 0) return "";
 
     char ip_str[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, sizeof(ip_str));
     return std::string(ip_str) + ":" + std::to_string(ntohs(from_addr.sin_port));
 }
 

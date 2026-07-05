@@ -67,21 +67,19 @@ $CXX -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o
 $CC -c core/p2p/kcp/ikcp.c -o ikcp.o
 $CC -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto
 $CC -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto
-$CXX -std=c++20 -c core/p2p/p2p.cpp -o p2p.o $CXXFLAGS
-$CXX -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol
+$CXX -std=c++20 -c core/p2p/p2p.cpp -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport
+$CXX -std=c++20 -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport
 
 # NAT 模块 / NAT modules
-$CXX -c core/p2p/nat_stun.cpp -o nat_stun.o -Icore/p2p
-$CXX -c core/p2p/udp_hole_punch.cpp -o udp_hole_punch.o -Icore/p2p
-$CXX -c core/p2p/port_prediction.cpp -o port_prediction.o -Icore/p2p
-$CXX -c core/p2p/nat_traversal.cpp -o nat_traversal.o -Icore/p2p
+$CXX -std=c++20 -c core/p2p/nat_stun.cpp -o nat_stun.o -Icore/p2p
+$CXX -std=c++20 -c core/p2p/udp_hole_punch.cpp -o udp_hole_punch.o -Icore/p2p
+$CXX -std=c++20 -c core/p2p/port_prediction.cpp -o port_prediction.o -Icore/p2p
+$CXX -std=c++20 -c core/p2p/nat_traversal.cpp -o nat_traversal.o -Icore/p2p
+
+# 传输层模块 / Transport module
+$CXX -std=c++20 -c core/transport/transport.cpp -o transport.o -Icore/p2p -Icore/crypto -Icore/transport
 
 # 链接 / Link
-$CXX -o p2p_chat p2p_chat.o p2p.o dht.o dht_c.o nat_stun.o udp_hole_punch.o port_prediction.o nat_traversal.o zrtp.o crypto_c.o ikcp.o -lstdc++ -lsodium -lpthread
-
-# iOS 交叉编译 / iOS cross-compile (optional)
-if [ "$OS" = "Darwin" ] && [ "$ARCH" = "arm64" ]; then
-    echo "🍎 iOS support: run ./build_ios.sh for iOS build"
-fi
+$CXX -o p2p_chat p2p_chat.o p2p.o dht.o dht_c.o transport.o nat_stun.o udp_hole_punch.o port_prediction.o nat_traversal.o zrtp.o crypto_c.o ikcp.o -lstdc++ -lsodium -lpthread
 
 echo "✅ Done! Run: ./p2p_chat 8080"

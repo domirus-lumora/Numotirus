@@ -1,6 +1,7 @@
 // core/p2p/udp_hole_punch.hpp
 // Multi-port UDP hole punching for NAT traversal.
 // 多端口 UDP 打洞，用于 NAT 穿透。
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
@@ -14,7 +15,8 @@
 namespace numotirus {
 namespace nat {
 
-// Result of a hole punching attempt. 打洞尝试的结果。
+// Result of a hole punching attempt.
+// 打洞尝试的结果。
 struct PunchResult {
     bool success = false;
     std::string peer_ip;
@@ -24,7 +26,8 @@ struct PunchResult {
     uint64_t latency_ms = 0;
 };
 
-// Callback for punch results. 打洞结果回调。
+// Callback for punch results.
+// 打洞结果回调。
 using PunchCallback = std::function<void(const PunchResult& result)>;
 
 // Multi-port UDP hole puncher.
@@ -49,10 +52,12 @@ public:
                PunchCallback callback,
                int timeout_ms = 5000);
 
-    // Cancel current punching attempt. 取消当前打洞尝试。
+    // Cancel current punching attempt.
+    // 取消当前打洞尝试。
     void Cancel();
 
-    // Check if currently punching. 检查是否正在打洞。
+    // Check if currently punching.
+    // 检查是否正在打洞。
     bool IsRunning() const { return running_.load(); }
 
     // Get the port that was used for the last successful punch.
@@ -66,12 +71,8 @@ private:
     uint16_t last_hit_port_ = 0;
 };
 
-// ============================================================
-// Legacy compatibility functions. 旧版兼容函数。
-// ============================================================
-
-// Start single-port UDP hole punching (legacy).
-// 启动单端口 UDP 打洞（旧版）。
+// Legacy compatibility functions (kept for existing code).
+// 旧版兼容函数（保留供现有代码使用）。
 void StartUdpHolePunch(uint16_t local_port,
                        const std::string& stun_server,
                        const std::string& peer_ip,

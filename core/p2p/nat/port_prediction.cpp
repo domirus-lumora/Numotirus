@@ -1,23 +1,22 @@
 // core/p2p/port_prediction.cpp
-// Dynamic port prediction for symmetric NAT traversal.
-// 对称型 NAT 穿透的动态端口预测。
+// Dynamic port prediction implementation using EWMA and variance analysis.
+// 使用指数加权移动平均和方差分析的动态端口预测实现。
+// SPDX-License-Identifier: Apache-2.0
 
 #include "port_prediction.hpp"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 
 namespace numotirus {
 namespace nat {
 
-// ============================================================
-// PortPredictor Implementation. PortPredictor 实现。
-// ============================================================
-
 void PortPredictor::RecordMapping(const std::string& target_key, uint16_t public_port) {
     auto& hist = history_[target_key];
 
-    // Avoid duplicate consecutive entries. 避免连续重复条目。
+    // Avoid duplicate consecutive entries.
+    // 避免连续重复条目。
     if (!hist.ports.empty() && hist.ports.back() == public_port) {
         return;
     }
@@ -27,10 +26,7 @@ void PortPredictor::RecordMapping(const std::string& target_key, uint16_t public
         std::chrono::steady_clock::now().time_since_epoch()
     ).count());
 
-    // Limit history size. 限制历史大小。
     EvictOldEntries(hist);
-
-    // Re-analyze pattern. 重新分析模式。
     AnalyzePattern(hist);
 }
 
@@ -42,99 +38,97 @@ void PortPredictor::EvictOldEntries(PortHistory& hist) {
 }
 
 void PortPredictor::AnalyzePattern(PortHistory& hist) {
-    if (hist.ports.size() < 2) {
+    if (hist.ports.size() < 3) {
         hist.pattern = NatPattern::kUnknown;
         hist.delta = 0;
+        hist.ewma = 0.0;
+        hist.variance = 0.0;
         return;
     }
 
-    // Calculate deltas between consecutive ports.
+    // Compute deltas between consecutive ports.
     // 计算连续端口之间的差值。
     std::vector<int16_t> deltas;
+    deltas.reserve(hist.ports.size() - 1);
     for (size_t i = 1; i < hist.ports.size(); ++i) {
-        int16_t d = static_cast<int16_t>(hist.ports[i]) - static_cast<int16_t>(hist.ports[i - 1]);
+        int16_t d = static_cast<int16_t>(hist.ports[i] - hist.ports[i - 1]);
         deltas.push_back(d);
     }
 
-    // Check if all deltas are the same (linear pattern).
-    // 检查所有差值是否相同（线性模式）。
-    bool all_same = true;
+    // Compute EWMA (alpha = 0.7, strong recency weighting).
+    // 计算指数加权移动平均（alpha=0.7，近期权重高）。
+    double alpha = 0.7;
+    double ewma = static_cast<double>(deltas[0]);
     for (size_t i = 1; i < deltas.size(); ++i) {
-        if (deltas[i] != deltas[0]) {
-            all_same = false;
-            break;
-        }
+        ewma = alpha * deltas[i] + (1.0 - alpha) * ewma;
     }
+    hist.ewma = ewma;
 
-    if (all_same && deltas.size() >= 2) {
-        hist.delta = deltas[0];
+    // Compute variance around EWMA.
+    // 计算围绕 EWMA 的方差。
+    double var = 0.0;
+    for (int16_t d : deltas) {
+        double diff = static_cast<double>(d) - ewma;
+        var += diff * diff;
+    }
+    var /= static_cast<double>(deltas.size());
+    hist.variance = var;
+
+    // Classify pattern: if variance is low and EWMA is non-negligible, treat as linear.
+    // 分类模式：若方差低且 EWMA 不为零，则视为线性。
+    const double kVarThreshold = 4.0;    // Tolerate small jitter. 容忍小抖动。
+    if (var < kVarThreshold && std::abs(ewma) > 0.5) {
+        hist.delta = static_cast<int16_t>(std::round(ewma));
         if (hist.delta > 0) {
             hist.pattern = NatPattern::kLinearUp;
         } else if (hist.delta < 0) {
             hist.pattern = NatPattern::kLinearDown;
         } else {
-            hist.pattern = NatPattern::kUnknown;  // Same port? 同一端口？
+            hist.pattern = NatPattern::kUnknown;
         }
-        return;
+    } else {
+        hist.pattern = NatPattern::kRandom;
+        hist.delta = 0;
     }
-
-    // Check if most deltas are similar (tolerate jitter).
-    // 检查是否大部分差值相似（容忍抖动）。
-    int16_t avg_delta = 0;
-    for (int16_t d : deltas) {
-        avg_delta += d;
-    }
-    avg_delta /= static_cast<int16_t>(deltas.size());
-
-    int matches = 0;
-    for (int16_t d : deltas) {
-        if (std::abs(d - avg_delta) <= 2) {
-            matches++;
-        }
-    }
-
-    if (matches >= static_cast<int>(deltas.size()) * 0.6 && std::abs(avg_delta) > 0) {
-        hist.delta = avg_delta;
-        if (avg_delta > 0) {
-            hist.pattern = NatPattern::kLinearUp;
-        } else {
-            hist.pattern = NatPattern::kLinearDown;
-        }
-        return;
-    }
-
-    // No clear pattern. 无明显模式。
-    hist.pattern = NatPattern::kRandom;
-    hist.delta = 0;
 }
 
 uint16_t PortPredictor::PredictNext(const PortHistory& hist) const {
-    if (hist.ports.empty()) return 0;
+    if (hist.ports.empty()) {
+        return 0;
+    }
     uint16_t last = hist.ports.back();
 
-    if (hist.pattern == NatPattern::kLinearUp) {
-        return static_cast<uint16_t>(last + hist.delta);
-    } else if (hist.pattern == NatPattern::kLinearDown) {
-        return static_cast<uint16_t>(last + hist.delta);  // delta is negative. delta 为负。
+    // If linear, use delta.
+    // 若为线性，使用差值。
+    if (hist.pattern == NatPattern::kLinearUp || hist.pattern == NatPattern::kLinearDown) {
+        int32_t next = static_cast<int32_t>(last) + hist.delta;
+        if (next >= 1 && next <= 65535) {
+            return static_cast<uint16_t>(next);
+        }
     }
 
-    // Random: fallback to last port + 1. 随机：回退到上一个端口 + 1。
+    // Fallback: use EWMA-based prediction.
+    // 回退：基于 EWMA 预测。
+    if (hist.ports.size() >= 2) {
+        int32_t next = static_cast<int32_t>(last) + static_cast<int32_t>(std::round(hist.ewma));
+        if (next >= 1 && next <= 65535) {
+            return static_cast<uint16_t>(next);
+        }
+    }
+
+    // Ultimate fallback: last + 1.
+    // 最终回退：上一个端口 + 1。
     return static_cast<uint16_t>(last + 1);
 }
 
 std::vector<uint16_t> PortPredictor::PredictPorts(const std::string& target_key, int count) {
     std::vector<uint16_t> results;
-
     auto it = history_.find(target_key);
-    if (it == history_.end()) {
-        return results;  // No history. 无历史。
-    }
-
-    const auto& hist = it->second;
-    if (hist.ports.empty()) {
+    if (it == history_.end() || it->second.ports.empty()) {
         return results;
     }
 
+    const auto& hist = it->second;
     uint16_t base = PredictNext(hist);
 
     // Generate candidates around the prediction.
@@ -142,9 +136,11 @@ std::vector<uint16_t> PortPredictor::PredictPorts(const std::string& target_key,
     int half = count / 2;
     for (int i = -half; i <= half && static_cast<int>(results.size()) < count; ++i) {
         uint16_t candidate = static_cast<uint16_t>(base + i);
-        // Avoid port 0. 避免端口 0。
-        if (candidate == 0) continue;
-        // Avoid duplicates. 避免重复。
+        if (candidate == 0) {
+            continue;
+        }
+        // Avoid duplicates.
+        // 避免重复。
         bool dup = false;
         for (uint16_t p : results) {
             if (p == candidate) {
@@ -157,18 +153,30 @@ std::vector<uint16_t> PortPredictor::PredictPorts(const std::string& target_key,
         }
     }
 
-    // If we have a linear pattern, also extend further in that direction.
-    // 如果是线性模式，也在该方向延伸。
+    // If linear, extend further in that direction.
+    // 若为线性，在该方向延伸。
     if (hist.pattern == NatPattern::kLinearUp || hist.pattern == NatPattern::kLinearDown) {
         for (int i = 1; i <= 3 && static_cast<int>(results.size()) < count; ++i) {
             uint16_t extended = static_cast<uint16_t>(base + hist.delta * i);
             if (extended != 0) {
-                results.push_back(extended);
+                // Check duplicate.
+                // 检查重复。
+                bool dup = false;
+                for (uint16_t p : results) {
+                    if (p == extended) {
+                        dup = true;
+                        break;
+                    }
+                }
+                if (!dup) {
+                    results.push_back(extended);
+                }
             }
         }
     }
 
-    // Sort by closeness to base. 按与 base 的接近程度排序。
+    // Sort by closeness to base.
+    // 按与 base 的接近程度排序。
     std::sort(results.begin(), results.end(),
         [base](uint16_t a, uint16_t b) {
             return std::abs(static_cast<int>(a) - static_cast<int>(base)) <
@@ -180,10 +188,7 @@ std::vector<uint16_t> PortPredictor::PredictPorts(const std::string& target_key,
 
 NatPattern PortPredictor::GetPattern(const std::string& target_key) const {
     auto it = history_.find(target_key);
-    if (it == history_.end()) {
-        return NatPattern::kUnknown;
-    }
-    return it->second.pattern;
+    return (it == history_.end()) ? NatPattern::kUnknown : it->second.pattern;
 }
 
 void PortPredictor::ClearHistory(const std::string& target_key) {
@@ -198,13 +203,8 @@ std::vector<std::string> PortPredictor::GetKnownTargets() const {
     return keys;
 }
 
-// ============================================================
-// Free functions. 自由函数。
-// ============================================================
-
-std::vector<uint16_t> QuickPredictPorts(uint16_t current_port, int count) {
-    return GeneratePortRange(current_port, count / 2);
-}
+// Free functions.
+// 自由函数。
 
 std::vector<uint16_t> GeneratePortRange(uint16_t center, int half_range) {
     std::vector<uint16_t> ports;

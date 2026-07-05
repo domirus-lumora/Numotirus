@@ -1,13 +1,14 @@
 // core/p2p/nat_stun.cpp
-// STUN client for NAT traversal with support for symmetric NAT learning.
-// STUN 客户端，用于 NAT 穿透，支持对称型 NAT 学习。
+// STUN client implementation.
+// STUN 客户端实现。
+// SPDX-License-Identifier: Apache-2.0
 
 #include "nat_stun.hpp"
+#include <sodium.h>
 #include <cstring>
-#include <random>
 #include <chrono>
-#include <iostream>
 #include <thread>
+#include <iostream>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -25,18 +26,14 @@ typedef int socklen_t;
 namespace numotirus {
 namespace nat {
 
-// ============================================================
-// STUN Protocol Structures. STUN 协议结构。
-// ============================================================
-
-// STUN header (RFC 5389). STUN 头部（RFC 5389）。
+// STUN protocol structures.
+// STUN 协议结构。
 struct StunHeader {
     uint16_t type;          // Message type. 消息类型。
     uint16_t length;        // Message length (excluding header). 消息长度（不含头部）。
     uint8_t transaction_id[kStunTransactionIdSize];  // Transaction ID. 事务 ID。
 } __attribute__((packed));
 
-// XOR-MAPPED-ADDRESS attribute. XOR-MAPPED-ADDRESS 属性。
 struct XorMappedAddressAttr {
     uint16_t type;          // Attribute type. 属性类型。
     uint16_t length;        // Attribute length. 属性长度。
@@ -46,20 +43,14 @@ struct XorMappedAddressAttr {
     uint8_t address[4];     // XOR'd IPv4 address. XOR 后的 IPv4 地址。
 } __attribute__((packed));
 
-// ============================================================
-// StunClient Implementation. StunClient 实现。
-// ============================================================
-
 StunClient::StunClient() {
     GenerateTransactionId();
 }
 
 void StunClient::GenerateTransactionId() {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    for (auto& b : transaction_id_) {
-        b = static_cast<uint8_t>(gen() & 0xFF);
-    }
+    // Use libsodium for cryptographically secure random bytes.
+    // 使用 libsodium 生成密码学安全的随机字节。
+    randombytes_buf(transaction_id_.data(), transaction_id_.size());
 }
 
 uint32_t StunClient::XorDecryptAddress(uint32_t addr) const {
@@ -67,8 +58,9 @@ uint32_t StunClient::XorDecryptAddress(uint32_t addr) const {
 }
 
 uint16_t StunClient::XorDecryptPort(uint16_t port) const {
-    // XOR with the high 16 bits of the magic cookie. 与 magic cookie 的高 16 位异或。
-    return port ^ (static_cast<uint16_t>(kStunMagicCookie >> 16));
+    // XOR with the high 16 bits of the magic cookie.
+    // 与 magic cookie 的高 16 位异或。
+    return port ^ static_cast<uint16_t>(kStunMagicCookie >> 16);
 }
 
 std::vector<uint8_t> StunClient::BuildBindingRequest() {
@@ -94,18 +86,20 @@ bool StunClient::ParseResponse(const uint8_t* data, size_t len, MappedAddress& o
     uint16_t msg_type = ntohs(header->type);
     uint16_t msg_class = msg_type & 0x0110;
 
-    // Check for success response. 检查是否为成功响应。
+    // Check for success response.
+    // 检查是否为成功响应。
     if (msg_class != static_cast<uint16_t>(StunClass::kSuccessResponse)) {
         return false;
     }
 
-    // Check transaction ID. 检查事务 ID。
+    // Check transaction ID.
+    // 检查事务 ID。
     if (std::memcmp(header->transaction_id, transaction_id_.data(), kStunTransactionIdSize) != 0) {
-        // Transaction ID mismatch. 事务 ID 不匹配。
         return false;
     }
 
-    // Parse attributes. 解析属性。
+    // Parse attributes.
+    // 解析属性。
     size_t pos = kStunHeaderSize;
     uint16_t length = ntohs(header->length);
 
@@ -134,7 +128,8 @@ bool StunClient::ParseResponse(const uint8_t* data, size_t len, MappedAddress& o
                 port = XorDecryptPort(port);
             }
 
-            // IPv4 only (family = 1). 仅 IPv4（family = 1）。
+            // IPv4 only (family = 1).
+            // 仅 IPv4（family = 1）。
             if (addr_attr->family != 1) {
                 pos += attr_len;
                 continue;
@@ -151,12 +146,11 @@ bool StunClient::ParseResponse(const uint8_t* data, size_t len, MappedAddress& o
             char ip_str[INET_ADDRSTRLEN];
             struct in_addr in_addr;
             in_addr.s_addr = addr;
-            inet_ntop(AF_INET, &in_addr, ip_str, INET_ADDRSTRLEN);
+            inet_ntop(AF_INET, &in_addr, ip_str, sizeof(ip_str));
 
             out.ip = ip_str;
             out.port = port;
             out.family = addr_attr->family;
-
             return true;
         }
 
@@ -189,7 +183,8 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
         return std::nullopt;
     }
 
-    // Resolve hostname. 解析主机名。
+    // Resolve hostname.
+    // 解析主机名。
     struct addrinfo hints = {};
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
@@ -211,16 +206,18 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
     std::memcpy(&server_addr, result->ai_addr, sizeof(server_addr));
     freeaddrinfo(result);
 
-    // Set timeout. 设置超时。
+    // Set timeout.
+    // 设置超时。
 #ifdef _WIN32
     DWORD timeout = timeout_ms;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
 #else
-    struct timeval tv = {timeout_ms / 1000, (timeout_ms % 1000) * 1000};
+    struct timeval tv = { timeout_ms / 1000, (timeout_ms % 1000) * 1000 };
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
 
-    // Send request. 发送请求。
+    // Send request.
+    // 发送请求。
     auto request = BuildBindingRequest();
     int sent = sendto(sock, reinterpret_cast<const char*>(request.data()), request.size(), 0,
                       reinterpret_cast<struct sockaddr*>(&server_addr), sizeof(server_addr));
@@ -235,7 +232,8 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
         return std::nullopt;
     }
 
-    // Receive response. 接收响应。
+    // Receive response.
+    // 接收响应。
     uint8_t buffer[kStunMaxResponseSize];
     struct sockaddr_in from_addr;
     socklen_t from_len = sizeof(from_addr);
@@ -263,7 +261,7 @@ std::optional<MappedAddress> StunClient::QueryPublicAddress(
     // 如果收到响应但地址为空，回退到 from 地址。
     if (!addr.IsValid()) {
         char ip_str[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &from_addr.sin_addr, ip_str, sizeof(ip_str));
         addr.ip = ip_str;
         addr.port = ntohs(from_addr.sin_port);
         addr.family = 1;
@@ -294,9 +292,8 @@ std::vector<MappedAddress> StunClient::QueryMultiple(
     return results;
 }
 
-// ============================================================
-// Convenience functions. 便捷函数。
-// ============================================================
+// Convenience functions.
+// 便捷函数。
 
 std::optional<MappedAddress> QueryStun(
     const std::string& server_host,

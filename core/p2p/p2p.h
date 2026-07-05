@@ -1,93 +1,131 @@
 // core/p2p/p2p.h
-// P2P network layer for Numotirus. Numotirus 的 P2P 网络层。
+// P2P network layer C API for Numotirus.
+// Numotirus 的 P2P 网络层 C API。
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef P2P_H
 #define P2P_H
 
-#include <cstdint>
-#include <cstddef>
+#include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Opaque node handle. 不透明的节点句柄。
-typedef struct P2PNode P2PNode;
+#define P2P_PUBLIC_KEY_SIZE 32
+#define P2P_SECRET_KEY_SIZE 32
+#define P2P_NODE_ID_SIZE 20
+#define P2P_MAX_IP_LEN 64
 
-// ZRTP SAS ready callback. ZRTP SAS 就绪回调。
-// sas: SAS string (4 groups of 4 digits). SAS 字符串（4组4位数字）。
-// user_data: User data passed to p2p_zrtp_start_exchange. 用户数据。
-typedef void (*zrtp_sas_callback)(const char* sas, void* user_data);
+// Message received callback.
+// 消息接收回调。
+typedef void (*p2p_message_callback)(const char* ip, uint16_t port,
+                                     const uint8_t* data, size_t len);
 
-// ZRTP verification result callback. ZRTP 验证结果回调。
-// confirmed: 1 if confirmed, 0 if rejected. 1 表示确认，0 表示拒绝。
-// user_data: User data. 用户数据。
-typedef void (*zrtp_result_callback)(int confirmed, void* user_data);
+// ZRTP SAS ready callback.
+// ZRTP SAS 就绪回调。
+typedef void (*p2p_zrtp_sas_callback)(const char* sas, void* user_data);
 
-// Create a P2P node. 创建 P2P 节点。
+// ZRTP verification result callback.
+// ZRTP 验证结果回调。
+typedef void (*p2p_zrtp_result_callback)(int confirmed, void* user_data);
+
+// P2P node structure (opaque for C users, fully defined for internal use).
+// P2P 节点结构（对 C 用户不透明，内部完整定义）。
+typedef struct P2PNode {
+    int sock;
+    volatile int running;
+
+    uint8_t pub_key[P2P_PUBLIC_KEY_SIZE];
+    uint8_t sec_key[P2P_SECRET_KEY_SIZE];
+    uint8_t peer_key[P2P_PUBLIC_KEY_SIZE];
+    int peer_ready;
+
+    p2p_message_callback on_message;
+
+    void* kcp;
+    void* kcp_ctx;
+    void* kcp_mutex;
+
+    char last_peer_ip[P2P_MAX_IP_LEN];
+    uint16_t last_peer_port;
+
+    void* zrtp;
+    p2p_zrtp_sas_callback on_zrtp_sas;
+    p2p_zrtp_result_callback on_zrtp_result;
+    void* zrtp_user_data;
+    int zrtp_exchanging;
+
+    void* dht;
+    void* transport;
+    uint8_t node_id[P2P_NODE_ID_SIZE];
+
+#ifdef _WIN32
+    void* recv_thread;
+    void* kcp_thread;
+    void* dht_bootstrap_thread;   // DHT bootstrap thread handle. DHT 引导线程句柄。
+#else
+    void* recv_thread;
+    void* kcp_thread;
+    void* dht_bootstrap_thread;   // DHT bootstrap thread handle. DHT 引导线程句柄。
+#endif
+} P2PNode;
+
+// Create a P2P node listening on the given UDP port.
+// 创建在指定 UDP 端口上监听的 P2P 节点。
 P2PNode* p2p_create(uint16_t port);
 
-// Start the node (non-blocking, internal thread). 启动节点（非阻塞，内部线程）。
-int p2p_start(P2PNode* n);
+// Destroy the node and release all resources.
+// 销毁节点并释放所有资源。
+void p2p_destroy(P2PNode* node);
 
-// Set message callback. 设置消息回调。
-void p2p_set_callback(P2PNode* n, void (*cb)(const char* ip, uint16_t port,
-                                              const uint8_t* data, size_t len));
+// Start the node's internal threads (non-blocking).
+// 启动节点的内部线程（非阻塞）。
+int p2p_start(P2PNode* node);
 
-// Get own public key. 获取自己的公钥。
-const uint8_t* p2p_get_public_key(P2PNode* n);
+// Set callback for incoming messages.
+// 设置接收消息的回调。
+void p2p_set_message_callback(P2PNode* node, p2p_message_callback cb);
 
-// Set peer's public key. 设置对方的公钥。
-int p2p_set_peer_key(P2PNode* n, const uint8_t* k);
+// Get own public key.
+// 获取自己的公钥。
+const uint8_t* p2p_get_public_key(const P2PNode* node);
 
-// Check if peer key is set. 检查是否已设置对方公钥。
-int p2p_is_peer_ready(P2PNode* n);
+// Set peer's public key from raw bytes.
+// 从原始字节设置对方的公钥。
+int p2p_set_peer_key(P2PNode* node, const uint8_t* key);
 
-// Send encrypted message. 发送加密消息。
-int p2p_send(P2PNode* n, const char* ip, uint16_t port,
+// Set peer's public key from hex string (64 characters).
+// 从十六进制字符串设置对方公钥（64字符）。
+int p2p_set_peer_key_hex(P2PNode* node, const char* hex);
+
+// Check if peer key has been set.
+// 检查是否已设置对方公钥。
+int p2p_is_peer_ready(const P2PNode* node);
+
+// Send encrypted message to peer.
+// 发送加密消息给对方。
+int p2p_send(P2PNode* node, const char* ip, uint16_t port,
              const uint8_t* data, size_t len);
 
-// -------------------------------------------------------------------------
-// Asynchronous ZRTP key exchange. 异步 ZRTP 密钥交换。
-// -------------------------------------------------------------------------
-
-// Start ZRTP key exchange (non-blocking). 启动 ZRTP 密钥交换（非阻塞）。
-int p2p_zrtp_start_exchange(P2PNode* n,
-                            zrtp_sas_callback on_sas,
-                            zrtp_result_callback on_result,
+// Start ZRTP key exchange.
+// 启动 ZRTP 密钥交换。
+int p2p_zrtp_start_exchange(P2PNode* node,
+                            p2p_zrtp_sas_callback on_sas,
+                            p2p_zrtp_result_callback on_result,
                             void* user_data);
 
-// Confirm or reject the ZRTP session after SAS verification.
+// Confirm or reject ZRTP session after SAS verification.
 // SAS 验证后确认或拒绝 ZRTP 会话。
-void p2p_zrtp_confirm(P2PNode* n, int confirmed);
+void p2p_zrtp_confirm(P2PNode* node, int confirmed);
 
-// Destroy node and free resources. 销毁节点并释放资源。
-void p2p_destroy(P2PNode* n);
-
-// Get DHT instance. 获取 DHT 实例。
-void* p2p_get_dht(P2PNode* n);
-
-// -------------------------------------------------------------------------
-// DHT routing table. DHT 路由表。
-// -------------------------------------------------------------------------
-
-void* dht_create(const uint8_t* own_id);
-void dht_destroy(void* dht);
-void dht_add_node(void* dht, const uint8_t* id, const char* ip, uint16_t port, uint64_t last_seen);
-int dht_find_closest(void* dht, const uint8_t* target,
-                     uint8_t* out_ids, char* out_ips, uint16_t* out_ports, int max_count);
-void dht_print(void* dht);
-
-// -------------------------------------------------------------------------
-// NAT traversal. NAT 穿透。
-// -------------------------------------------------------------------------
-
-// Start NAT traversal to peer. 开始向对方进行 NAT 穿透。
-// peer_candidates: format "ip1:port1,ip2:port2". 格式 "ip1:port1,ip2:port2"。
-int p2p_nat_start_traversal(P2PNode* n, const char* peer_candidates);
+// Get the DHT handle for debugging.
+// 获取 DHT 句柄用于调试。
+void* p2p_get_dht(P2PNode* node);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // P2P_H
+#endif
