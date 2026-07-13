@@ -20,9 +20,11 @@ struct CryptoKeypair {
 };
 
 static void derive_key(const uint8_t* shared, uint8_t* key) {
-    crypto_generichash(key, SYMMETRIC_KEY_SIZE, shared, SHARED_SECRET_SIZE, NULL, 0);
+    const char* salt = "Corvus";
+    crypto_generichash(key, SYMMETRIC_KEY_SIZE,
+                       shared, SHARED_SECRET_SIZE,
+                       (const unsigned char*)salt, strlen(salt));
 }
-
 CryptoKeypair* crypto_keypair_generate(void) {
     if (sodium_init() < 0) return NULL;
     CryptoKeypair* kp = (CryptoKeypair*)malloc(sizeof(CryptoKeypair));

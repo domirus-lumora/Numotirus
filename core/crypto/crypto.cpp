@@ -10,9 +10,7 @@
 namespace numotirus {
 namespace crypto {
 
-// ============================================================
 // Internal helpers. 内部辅助函数。
-// ============================================================
 
 // Ensure libsodium is initialized once. 确保 libsodium 只初始化一次。
 static bool is_sodium_initialized() {
@@ -22,10 +20,7 @@ static bool is_sodium_initialized() {
     return initialized;
 }
 
-// ============================================================
 // X25519 key exchange. X25519 密钥交换。
-// ============================================================
-
 KeyPair generate_keypair() {
     if (!is_sodium_initialized()) {
         throw std::runtime_error("libsodium not initialized");
@@ -59,10 +54,7 @@ std::array<uint8_t, SHARED_SECRET_SIZE> compute_shared_secret(
     return shared;
 }
 
-// ============================================================
 // Symmetric key derivation. 对称密钥派生。
-// ============================================================
-
 std::array<uint8_t, KEY_SIZE> derive_key(
     const std::array<uint8_t, SHARED_SECRET_SIZE>& shared_secret,
     const std::string& salt) {
@@ -85,11 +77,8 @@ std::array<uint8_t, KEY_SIZE> derive_key(
     return key;
 }
 
-// ============================================================
 // XChaCha20-Poly1305 authenticated encryption.
 // XChaCha20-Poly1305 认证加密。
-// ============================================================
-
 std::vector<uint8_t> encrypt(
     const std::vector<uint8_t>& plaintext,
     const std::array<uint8_t, KEY_SIZE>& key,
@@ -151,10 +140,7 @@ std::vector<uint8_t> decrypt(
     return plaintext;
 }
 
-// ============================================================
 // Random bytes. 随机字节。
-// ============================================================
-
 std::vector<uint8_t> random_bytes(size_t count) {
     if (!is_sodium_initialized()) {
         throw std::runtime_error("libsodium not initialized");
@@ -165,10 +151,7 @@ std::vector<uint8_t> random_bytes(size_t count) {
     return bytes;
 }
 
-// ============================================================
 // Public key encryption (ECIES). 公钥加密（ECIES）。
-// ============================================================
-
 std::vector<uint8_t> encrypt_public(
     const std::vector<uint8_t>& plaintext,
     const std::array<uint8_t, PUBLIC_KEY_SIZE>& recipient_public) {
@@ -189,7 +172,7 @@ std::vector<uint8_t> encrypt_public(
     }
 
     // Derive symmetric key. 派生对称密钥。
-    auto key = derive_key(shared, "ecies");
+    auto key = derive_key(shared, "Corvus");
 
     // Generate random nonce. 生成随机 nonce。
     auto nonce_vec = random_bytes(NONCE_SIZE);
@@ -246,7 +229,7 @@ std::vector<uint8_t> decrypt_private(
     }
 
     // Derive symmetric key. 派生对称密钥。
-    auto key = derive_key(shared, "ecies");
+    auto key = derive_key(shared, "Corvus");
 
     // Decrypt and return. 解密并返回。
     return decrypt(enc, key, nonce);

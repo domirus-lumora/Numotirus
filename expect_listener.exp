@@ -1,8 +1,0 @@
-#!/usr/bin/expect -f
-set timeout 10
-spawn ./p2p_chat 8080
-expect "Enter peer public key (64 hex):"
-send "[lindex $argv 0]\r"
-expect "Type 'y' to confirm"
-send "y\r"
-expect eof
