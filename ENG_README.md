@@ -6,6 +6,7 @@ This branch accepts prototypes in **any language**. Don't know C++? No problem.
 
 Your code goes here:
 
+```text
 SKILL/
 ├── TEMPLATE/                    # Template (do not modify)
 ├── your_module_name/            # Use your module name
@@ -13,6 +14,7 @@ SKILL/
 │   └── src/                     # Your code
 │       └── (any language)
 └── other_module/
+```
 
 ## How to submit
 
