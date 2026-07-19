@@ -2,7 +2,7 @@
 
 感谢你考虑参与 Numotirus。这不是“帮我们”的项目，是“和我们一起建”的项目。
 
-*备注：无**CMake方案。***
+*备注：无 **CMake** 方案。*
 
 ## 当前进度
 
@@ -10,12 +10,12 @@
 | ------ | ------ | ------ |
 | `core/crypto` | ✅ 已完成 | C API，X25519 + XChaCha20-Poly1305 + ECIES |
 | `core/p2p` | ✅ 已完成 | UDP + KCP + select 非阻塞，跨平台 |
-| `core/protocol` (ZRTP) | ✅ 已完成 | 密钥交换 + SAS 生成 + TOFU |
+| `core/protocol` (Noise) | ✅ 已完成 | Noise XX 握手 + SAS 生成 + TOFU |
 | `p2p_chat.c` | ✅ 可运行 | 命令行聊天示例 |
 | `core/plugin` | ❌ 待实现 | 插件系统 |
 | GUI | ❌ 待实现 | Avalonia (C#) |
 
-**下一步需要你**：NAT 穿透、ZRTP 异步回调、GUI 原型、神霁集成。
+**下一步需要你**：NAT 穿透、GUI 原型、神霁集成。
 
 ## Issue 提交
 
@@ -47,7 +47,7 @@
 
 - `[Crypto] 添加 X25519 密钥交换骨架`
 - `[Network] 添加 KCP 超时重传优化`
-- `[Protocol] ZRTP SAS 异步回调`
+- `[Protocol] Noise 协议实现`
 - `[GUI] 初始化 Avalonia 主窗口`
 
 ### PR 描述
@@ -75,7 +75,7 @@
 - 代码注释：英文在前，中文在后，格式 `// English text. 中文文本。`
 - AI 生成代码：允许，但必须理解每一行、自己测试、PR 中声明
 
-完整规范见 [`CODING_STYLE.md`](./CODING_STYLE.md)
+完整规范见 [`CODING_STYLE.md`](docs/CODING_STYLE.md)
 
 ## 行为准则
 

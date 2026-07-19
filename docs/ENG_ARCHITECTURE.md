@@ -14,7 +14,7 @@ This document is for developers who want to understand or contribute to the core
 | Layer | Directory | Language | Responsibility | Status |
 | ------- | ----------- | ---------- | ---------------- | -------- |
 | **Application** | `cli/`, `p2p_chat.c` | C++ / C | CLI test tool | ✅ Working |
-| **Protocol** | `core/protocol/` | C++ | ZRTP key exchange, SAS verification | ✅ Complete |
+| **Protocol** | `core/protocol/` | C++ | Noise XX handshake, SAS verification | ✅ Complete |
 | **Network** | `core/p2p/` | C | UDP + KCP reliable transport, cross-platform | ✅ Complete |
 | **Crypto** | `core/crypto/` | C | X25519 + XChaCha20-Poly1305 + ECIES | ✅ Complete |
 | **Plugin** | `core/plugin/` | C (ABI) | Dynamic plugin loading | ❌ Pending |
@@ -46,7 +46,7 @@ crypto_decrypt_private(cipher, clen, my_seckey, &plain, &plen);
 
 ### Network Layer (`core/p2p/`)
 
-**Status**: ✅ Complete, based on yx's KCP + select implementation.
+**Status**: ✅ Complete, based on KCP + select implementation.
 
 **Features**:
 
@@ -62,30 +62,29 @@ p2p_start(node);
 p2p_send(node, "127.0.0.1", 8888, (uint8_t*)"hello", 5);
 ```
 
-**Contribution**: Original implementation archived in `legacy/yx/`. Welcome to optimize KCP parameters or add NAT traversal.
-
 ---
 
 ### Protocol Layer (`core/protocol/`)
 
-**Status**: ✅ ZRTP key exchange complete.
+**Status**: ✅ Noise handshake complete.
 
 **Features**:
 
-- ZRTP session based on libsodium `crypto_kx`
+- Noise XX pattern handshake (interactive, identity hiding for both parties)
+- X25519 key exchange
 - SAS (Short Authentication String) generation and verification
 - Trust store (TOFU)
 
-```c
+```cpp
 // Usage example
-zrtp_session_t* zrtp = zrtp_session_new();
-zrtp_session_set_keypair(zrtp, pub, sec);
-zrtp_session_set_peer_public(zrtp, peer_pub);
-zrtp_session_key_exchange(zrtp);
-const char* sas = zrtp_session_get_sas(zrtp);
+NoiseSession session;
+session.SetKeyPair(kp);
+session.SetPeerPublic(peer_pub);
+auto err = session.Handshake(true, write_cb, read_cb);
+std::string sas = session.GetSas();
 ```
 
-**TODO**: SAS verification callback (currently blocking `fgets`, needs async).
+**Dependency**: `noise-cpp` (submodule)
 
 ---
 
@@ -115,7 +114,7 @@ numotirus/
 ├── core/
 │   ├── crypto/           ✅ Crypto module
 │   ├── p2p/              ✅ P2P network layer (KCP + select)
-│   ├── protocol/         ✅ ZRTP protocol
+│   ├── protocol/         ✅ Noise protocol
 │   ├── plugin/           ❌ Pending
 │   └── CMakeLists.txt
 ├── legacy/
@@ -132,17 +131,16 @@ numotirus/
 | --------- | ------------ | ------- |
 | `core/crypto` | 100% | C API, stable |
 | `core/p2p` | 100% | KCP + select, cross-platform |
-| `core/protocol` (ZRTP) | 100% | SAS generation + TOFU |
-| `p2p_chat.c` | 90% | CLI example, SAS verification needs async |
+| `core/protocol` (Noise) | 100% | Noise XX + SAS + TOFU |
+| `p2p_chat.c` | 90% | CLI example, SAS verification implemented |
 | `core/plugin` | 0% | Pending |
 | GUI | 0% | Pending |
 
 ## Next Steps (Priority Order)
 
-1. **ZRTP async callback** — Replace blocking `fgets` with callback
-2. **NAT traversal** — UPnP / libp2p circuit relay
-3. **GUI prototype** — Avalonia + C FFI
-4. **Lumora plugin** — Python FFI integration
+1. **NAT traversal** — UPnP / decentralized relay
+2. **GUI prototype** — Avalonia + C FFI
+3. **Lumora plugin** — Python FFI integration
 
 ## Contribution Guide
 

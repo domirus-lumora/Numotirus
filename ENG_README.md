@@ -15,16 +15,16 @@ Because centralized platforms are controlling our conversations. Because age, id
 
 | Feature | Description |
 | --------- | ------------- |
-| **Key Exchange** | ZRTP protocol — automatic negotiation + SAS verification. You own your identity. |
+| **Key Exchange** | Noise protocol — XX pattern handshake + SAS verification. You own your identity. |
 | **P2P Communication** | UDP + KCP reliable transport. Direct node-to-node messaging. No central server. |
 | **Open Source** | Apache 2.0 — view, modify, and distribute freely. |
-| **Embeddable** | Lumora (Shenji) integration planned as default assistant. |
+| **Embeddable** | Lumora integration planned as default assistant. |
 
 ## Tech Stack
 
 - **Core Protocol**: C++20 + C11 (cross-platform)
 - **Network Layer**: Custom P2P stack (UDP + KCP + non-blocking `select()`)
-- **Cryptography**: libsodium (X25519 + XChaCha20-Poly1305 + ZRTP)
+- **Cryptography**: libsodium (X25519 + XChaCha20-Poly1305 + Noise)
 - **GUI**: C# / Avalonia (cross-platform, in development)
 
 ## Not a One-Person Project
@@ -39,7 +39,7 @@ You don't need to "wait for permission". You just need to run the code.
 
 🚧 Core protocol and P2P layer have working implementations. Contributions welcome.
 
-- [x] Key exchange protocol (ZRTP + SAS)
+- [x] Key exchange protocol (Noise XX + SAS)
 - [x] P2P network layer (UDP + KCP + cross-platform)
 - [ ] GUI client prototype
 - [ ] Lumora integration

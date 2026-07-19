@@ -14,7 +14,7 @@
 | 层级 | 目录 | 语言 | 职责 | 状态 |
 | ------ | ------ | ------ | ------ | ------ |
 | **应用层** | `cli/`, `p2p_chat.c` | C++ / C | 命令行测试工具 | ✅ 可运行 |
-| **协议层** | `core/protocol/` | C++ | ZRTP 密钥交换、SAS 验证 | ✅ 已完成 |
+| **协议层** | `core/protocol/` | C++ | Noise XX 握手、SAS 验证 | ✅ 已完成 |
 | **网络层** | `core/p2p/` | C | UDP + KCP 可靠传输，跨平台 | ✅ 已完成 |
 | **加密层** | `core/crypto/` | C | X25519 + XChaCha20-Poly1305 + ECIES | ✅ 已完成 |
 | **插件层** | `core/plugin/` | C (ABI) | 动态加载扩展 | ❌ 待实现 |
@@ -46,7 +46,7 @@ crypto_decrypt_private(cipher, clen, my_seckey, &plain, &plen);
 
 ### 网络层 (`core/p2p/`)
 
-**状态**：✅ 已完成，基于 yx 的 KCP + select 实现。
+**状态**：✅ 已完成，基于 KCP + select 实现。
 
 **功能**：
 
@@ -62,30 +62,29 @@ p2p_start(node);
 p2p_send(node, "127.0.0.1", 8888, (uint8_t*)"hello", 5);
 ```
 
-**贡献**：原始实现已归档至 `legacy/yx/`。欢迎优化 KCP 参数或添加 NAT 穿透。
-
 ---
 
 ### 协议层 (`core/protocol/`)
 
-**状态**：✅ ZRTP 密钥交换已完成。
+**状态**：✅ Noise 协议握手已完成。
 
 **功能**：
 
-- 基于 libsodium `crypto_kx` 的 ZRTP 会话
+- Noise XX 模式握手（交互式，双方身份隐藏）
+- X25519 密钥交换
 - SAS（短认证字符串）生成与比对
 - 信任存储（TOFU）
 
-```c
+```cpp
 // 使用示例
-zrtp_session_t* zrtp = zrtp_session_new();
-zrtp_session_set_keypair(zrtp, pub, sec);
-zrtp_session_set_peer_public(zrtp, peer_pub);
-zrtp_session_key_exchange(zrtp);
-const char* sas = zrtp_session_get_sas(zrtp);
+NoiseSession session;
+session.SetKeyPair(kp);
+session.SetPeerPublic(peer_pub);
+auto err = session.Handshake(true, write_cb, read_cb);
+std::string sas = session.GetSas();
 ```
 
-**待办**：SAS 验证回调（当前为阻塞 `fgets`，需改为异步）。
+**依赖**：`noise-cpp`（submodule）
 
 ---
 
@@ -115,7 +114,7 @@ numotirus/
 ├── core/
 │   ├── crypto/           ✅ 加密模块
 │   ├── p2p/              ✅ P2P 网络层（KCP + select）
-│   ├── protocol/         ✅ ZRTP 协议
+│   ├── protocol/         ✅ Noise 协议
 │   ├── plugin/           ❌ 待实现
 │   └── CMakeLists.txt
 ├── legacy/
@@ -132,17 +131,16 @@ numotirus/
 | ------ | -------- | ------ |
 | `core/crypto` | 100% | C API，稳定 |
 | `core/p2p` | 100% | KCP + select，跨平台 |
-| `core/protocol` (ZRTP) | 100% | SAS 生成 + TOFU |
-| `p2p_chat.c` | 90% | 命令行示例，SAS 验证待异步化 |
+| `core/protocol` (Noise) | 100% | Noise XX + SAS + TOFU |
+| `p2p_chat.c` | 90% | 命令行示例，SAS 验证已实现 |
 | `core/plugin` | 0% | 待实现 |
 | GUI | 0% | 待实现 |
 
 ## 下一步优先级
 
-1. **ZRTP 异步回调** —— 改 `fgets` 阻塞为 callback
-2. **NAT 穿透** —— UPnP / libp2p circuit relay
-3. **GUI 原型** —— Avalonia + C FFI
-4. **神霁插件** —— Python FFI 集成
+1. **NAT 穿透** —— UPnP / 去中心化中继
+2. **GUI 原型** —— Avalonia + C FFI
+3. **神霁插件** —— Python FFI 集成
 
 ## 贡献指南
 

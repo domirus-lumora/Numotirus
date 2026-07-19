@@ -1,16 +1,19 @@
-# ZRTP Module for Numotirus
+# Numotirus Noise Protocol Module
 
-ZRTP protocol implementation based on X25519 + BLAKE2b, providing key exchange, SAS short authentication string generation, and trust storage.
+Key exchange implementation based on the Noise Protocol Framework, providing XX pattern handshake, SAS short authentication string generation, and trust storage.
 
 ---
 
 ## Features
 
-- X25519 key exchange
+- Noise XX pattern handshake (interactive, identity hiding for both parties)
+- X25519 elliptic curve key exchange
+- ChaCha20-Poly1305 symmetric encryption
+- BLAKE2s hash function
 - SAS (Short Authentication String) generation (4 groups of 4 digits)
 - Manual SAS verification with state flag
 - Trust storage (persistent public key + shared secret)
-- No role dependency (automatic client/server negotiation based on lexicographic order of public keys)
+- No role dependency (based on Noise protocol standard)
 
 ---
 
@@ -18,9 +21,13 @@ ZRTP protocol implementation based on X25519 + BLAKE2b, providing key exchange, 
 
 ```text
 core/protocol/
-├── zrtp.h          # Header file, public API
-├── zrtp.c          # Implementation
-└── test_zrtp.c     # Unit test
+├── noise.hpp          # Header file, public API (wrapper layer)
+├── noise.cpp          # Implementation (wrapper layer)
+└── noise-cpp/         # Noise protocol implementation (submodule, original repo)
+    ├── noise.h
+    ├── noise.cpp
+    ├── monocypher.c/h
+    └── rng_get_bytes.c/h
 ```
 
 ---
@@ -29,62 +36,75 @@ core/protocol/
 
 ```bash
 cd core/protocol
-gcc -c zrtp.c -o zrtp.o -lsodium
-```
-
-Run unit tests:
-
-```bash
-gcc -o test_zrtp test_zrtp.c zrtp.c -lsodium
-./test_zrtp
+g++ -std=c++20 -c noise.cpp -I. -Inoise-cpp -o noise.o
+g++ -std=c++20 -c noise-cpp/noise.cpp -Inoise-cpp -o noise_cpp.o
+gcc -c noise-cpp/monocypher.c -Inoise-cpp -o monocypher.o
+gcc -c noise-cpp/rng_get_bytes.c -Inoise-cpp -o rng_get_bytes.o
 ```
 
 ---
 
 ## Usage
 
-```c
-#include "core/protocol/zrtp.h"
+```cpp
+#include "core/protocol/noise.hpp"
 
-// 1. Create session
-zrtp_session_t* sess = zrtp_session_new();
+using namespace numotirus::protocol::noise;
 
-// 2. Set own keypair (obtained from crypto module)
-zrtp_session_set_keypair(sess, my_pubkey, my_seckey);
+// 1. Generate key pair
+auto kp = GenerateKeyPair();
 
-// 3. Set peer's public key (exchanged via P2P)
-zrtp_session_set_peer_public(sess, peer_pubkey);
+// 2. Create session
+NoiseSession session;
+session.SetKeyPair(kp.value());
+session.SetPeerPublic(peer_public_key);
 
-// 4. Perform key exchange
-if (zrtp_session_key_exchange(sess) != ZRTP_SUCCESS) {
-    // handle error
+// 3. Perform handshake
+auto err = session.Handshake(
+    true,  // initiator
+    [](const uint8_t* data, size_t len) -> ErrorCode {
+        // Send data to peer
+        return ErrorCode::kSuccess;
+    },
+    [](uint8_t* buffer, size_t len) -> ErrorCode {
+        // Receive data from peer
+        return ErrorCode::kSuccess;
+    }
+);
+
+if (err != ErrorCode::kSuccess) {
+    // Handle error
 }
 
-// 5. Get SAS code for user out-of-band verification
-const char* sas = zrtp_session_get_sas(sess);
-printf("SAS: %s\n", sas);
+// 4. Get SAS code for user out-of-band verification
+std::string sas = session.GetSas();
+std::cout << "SAS: " << sas << std::endl;
 
-// 6. Mark as verified after user confirmation
-zrtp_session_mark_verified(sess);
+// 5. Mark as verified after user confirmation
+session.MarkVerified();
 
-// 7. Get shared secret for encryption
-const uint8_t* secret = zrtp_session_get_shared_secret(sess);
+// 6. Get session keys
+auto rx_key = session.GetRxKey();
+auto tx_key = session.GetTxKey();
 
-// 8. Cleanup
-zrtp_session_free(sess);
+// 7. Check if handshake is complete
+if (session.IsHandshakeComplete()) {
+    // Ready for encrypted communication
+}
 ```
 
 ---
 
 ## Trust Store
 
-```c
+```cpp
 // Save trust (call after first successful verification)
-zrtp_trust_store_save("peer_id", peer_pubkey, shared_secret);
+TrustSave("peer_id", peer_public_key, shared_secret);
 
 // Load trust (check on next connection)
-uint8_t saved_pubkey[32], saved_secret[32];
-if (zrtp_trust_store_load("peer_id", saved_pubkey, saved_secret) == ZRTP_SUCCESS) {
+std::array<uint8_t, kPublicKeySize> pubkey;
+std::array<uint8_t, kSharedKeySize> secret;
+if (TrustLoad("peer_id", pubkey, secret) == ErrorCode::kSuccess) {
     // Trust exists, skip SAS verification
 }
 ```
@@ -95,39 +115,38 @@ if (zrtp_trust_store_load("peer_id", saved_pubkey, saved_secret) == ZRTP_SUCCESS
 
 | Function | Description |
 | ---------- | ------------- |
-| `zrtp_session_new()` | Create a new session |
-| `zrtp_session_free()` | Destroy session and free resources |
-| `zrtp_session_set_keypair()` | Set local keypair |
-| `zrtp_session_set_peer_public()` | Set peer's public key |
-| `zrtp_session_key_exchange()` | Perform X25519 key exchange |
-| `zrtp_session_get_sas()` | Get SAS string |
-| `zrtp_session_mark_verified()` | Mark session as verified |
-| `zrtp_session_is_verified()` | Check if peer is verified |
-| `zrtp_session_get_shared_secret()` | Get shared secret |
-| `zrtp_trust_store_save()` | Save trust entry to file |
-| `zrtp_trust_store_load()` | Load trust entry from file |
+| `GenerateKeyPair()` | Generate X25519 key pair |
+| `NoiseSession()` | Create a session |
+| `SetKeyPair()` | Set local key pair |
+| `SetPeerPublic()` | Set peer's public key |
+| `Handshake()` | Perform Noise XX handshake |
+| `GetSas()` | Get SAS string |
+| `MarkVerified()` | Mark as verified |
+| `IsVerified()` | Check if peer is verified |
+| `GetRxKey()` | Get receive key |
+| `GetTxKey()` | Get transmit key |
+| `IsHandshakeComplete()` | Check if handshake is complete |
+| `TrustSave()` | Save trust entry |
+| `TrustLoad()` | Load trust entry |
 
 ---
 
 ## Test
 
-Run unit tests to verify SAS consistency, different-keypair differentiation, verified flag, and trust storage:
-
 ```bash
-gcc -o test_zrtp test_zrtp.c zrtp.c -lsodium
-./test_zrtp
+# Build and run tests
+g++ -std=c++20 -o test_noise test_noise.cpp noise.cpp noise-cpp/noise.cpp monocypher.c rng_get_bytes.c -I. -Inoise-cpp -lsodium
+./test_noise
 ```
 
 Expected output:
 
 ```bash
-=== ZRTP Module Test ===
+=== Noise Module Test ===
 
-✅ test_same_sas: PASSED
+✅ test_keypair_generation: PASSED
+✅ test_handshake: PASSED
    SAS: 1234 5678 9012 3456
-✅ test_different_sas: PASSED
-   SAS1: 1234 5678 9012 3456
-   SAS2: 6543 2109 8765 4321
 ✅ test_verified_flag: PASSED
    Verified: 0 -> 1
 ✅ test_trust_store: PASSED
@@ -141,6 +160,17 @@ Passed: 4/4
 ## Dependencies
 
 - [libsodium](https://doc.libsodium.org/) 1.0.18+
+- [noise-cpp](https://github.com/ethindp/noise-cpp) (submodule)
+
+---
+
+## Protocol Notes
+
+- **Handshake Pattern**: Noise XX (interactive, identity hiding for both parties)
+- **Elliptic Curve**: X25519
+- **Symmetric Encryption**: ChaCha20-Poly1305
+- **Hash Function**: BLAKE2s
+- **SAS Generation**: 4 groups of 4 digits (derived from handshake hash)
 
 ---
 

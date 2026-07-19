@@ -1,90 +1,109 @@
-# ZRTP Module for Numotirus
+# Numotirus Noise 协议模块
 
-ZRTP 协议实现，基于 X25519 + BLAKE2b，提供密钥交换、SAS 短认证字符串生成和信任存储。
+基于 Noise Protocol Framework 的密钥交换实现，提供 XX 模式握手、SAS 短认证字符串生成和信任存储。
 
 ---
 
-## 功能 Features
+## 功能
 
-- X25519 密钥交换
-- 短认证字符串（SAS）生成（4 组 4 位数字）
+- Noise XX 模式握手（交互式，双方身份隐藏）
+- X25519 椭圆曲线密钥交换
+- ChaCha20-Poly1305 对称加密
+- BLAKE2s 哈希函数
+- SAS（Short Authentication String）生成（4 组 4 位数字）
 - SAS 手动验证与状态标记
 - 信任存储（公钥 + 共享秘密持久化）
-- 无角色依赖（基于公钥字典序自动协商 client/server）
+- 无角色依赖（基于 Noise 协议标准）
 
 ---
 
-## 文件结构 Files
+## 文件结构
 
 ```text
 core/protocol/
-├── zrtp.h          # 头文件，公开 API
-├── zrtp.c          # 实现
-└── test_zrtp.c     # 单元测试
+├── noise.hpp          # 头文件，公开 API（封装层）
+├── noise.cpp          # 实现（封装层）
+└── noise-cpp/         # Noise 协议实现（submodule，原作者仓库）
+    ├── noise.h
+    ├── noise.cpp
+    ├── ...
 ```
 
 ---
 
-## 编译 Build
+## 编译
 
 ```bash
 cd core/protocol
-gcc -c zrtp.c -o zrtp.o -lsodium
-```
-
-单元测试：
-
-```bash
-gcc -o test_zrtp test_zrtp.c zrtp.c -lsodium
-./test_zrtp
+g++ -std=c++20 -c noise.cpp -I. -Inoise-cpp -o noise.o
+g++ -std=c++20 -c noise-cpp/noise.cpp -Inoise-cpp -o noise_cpp.o
+gcc -c noise-cpp/monocypher.c -Inoise-cpp -o monocypher.o
+gcc -c noise-cpp/rng_get_bytes.c -Inoise-cpp -o rng_get_bytes.o
 ```
 
 ---
 
-## 使用 Usage
+## 使用
 
-```c
-#include "core/protocol/zrtp.h"
+```cpp
+#include "core/protocol/noise.hpp"
 
-// 1. 创建会话
-zrtp_session_t* sess = zrtp_session_new();
+using namespace numotirus::protocol::noise;
 
-// 2. 设置自己的密钥对（从 crypto 模块获取）
-zrtp_session_set_keypair(sess, my_pubkey, my_seckey);
+// 1. 生成密钥对
+auto kp = GenerateKeyPair();
 
-// 3. 设置对方的公钥（通过 P2P 交换获得）
-zrtp_session_set_peer_public(sess, peer_pubkey);
+// 2. 创建会话
+NoiseSession session;
+session.SetKeyPair(kp.value());
+session.SetPeerPublic(peer_public_key);
 
-// 4. 执行密钥交换
-if (zrtp_session_key_exchange(sess) != ZRTP_SUCCESS) {
+// 3. 执行握手
+auto err = session.Handshake(
+    true,  // 发起方
+    [](const uint8_t* data, size_t len) -> ErrorCode {
+        // 发送数据到对方
+        return ErrorCode::kSuccess;
+    },
+    [](uint8_t* buffer, size_t len) -> ErrorCode {
+        // 从对方接收数据
+        return ErrorCode::kSuccess;
+    }
+);
+
+if (err != ErrorCode::kSuccess) {
     // 处理错误
 }
 
-// 5. 获取 SAS 码，让用户口头比对
-const char* sas = zrtp_session_get_sas(sess);
-printf("SAS: %s\n", sas);
+// 4. 获取 SAS 码，让用户口头比对
+std::string sas = session.GetSas();
+std::cout << "SAS: " << sas << std::endl;
 
-// 6. 用户确认后标记已验证
-zrtp_session_mark_verified(sess);
+// 5. 用户确认后标记已验证
+session.MarkVerified();
 
-// 7. 获取共享秘密用于后续加密
-const uint8_t* secret = zrtp_session_get_shared_secret(sess);
+// 6. 获取会话密钥
+auto rx_key = session.GetRxKey();
+auto tx_key = session.GetTxKey();
 
-// 8. 清理
-zrtp_session_free(sess);
+// 7. 检查握手是否完成
+if (session.IsHandshakeComplete()) {
+    // 可以开始加密通信
+}
 ```
 
 ---
 
-## 信任存储 Trust Store
+## 信任存储
 
-```c
+```cpp
 // 保存信任（首次验证后调用）
-zrtp_trust_store_save("peer_id", peer_pubkey, shared_secret);
+TrustSave("peer_id", peer_public_key, shared_secret);
 
 // 加载信任（下次连接时检查）
-uint8_t saved_pubkey[32], saved_secret[32];
-if (zrtp_trust_store_load("peer_id", saved_pubkey, saved_secret) == ZRTP_SUCCESS) {
+std::array<uint8_t, kPublicKeySize> pubkey;
+std::array<uint8_t, kSharedKeySize> secret;
+if (TrustLoad("peer_id", pubkey, secret) == ErrorCode::kSuccess) {
     // 信任存在，跳过 SAS 比对
 }
 ```
@@ -95,39 +114,38 @@ if (zrtp_trust_store_load("peer_id", saved_pubkey, saved_secret) == ZRTP_SUCCESS
 
 | 函数 | 说明 |
 | ------ | ------ |
-| `zrtp_session_new()` | 创建会话 |
-| `zrtp_session_free()` | 销毁会话 |
-| `zrtp_session_set_keypair()` | 设置本地密钥对 |
-| `zrtp_session_set_peer_public()` | 设置对方公钥 |
-| `zrtp_session_key_exchange()` | 执行密钥交换 |
-| `zrtp_session_get_sas()` | 获取 SAS 字符串 |
-| `zrtp_session_mark_verified()` | 标记已验证 |
-| `zrtp_session_is_verified()` | 检查是否已验证 |
-| `zrtp_session_get_shared_secret()` | 获取共享秘密 |
-| `zrtp_trust_store_save()` | 保存信任 |
-| `zrtp_trust_store_load()` | 加载信任 |
+| `GenerateKeyPair()` | 生成 X25519 密钥对 |
+| `NoiseSession()` | 创建会话 |
+| `SetKeyPair()` | 设置本地密钥对 |
+| `SetPeerPublic()` | 设置对方公钥 |
+| `Handshake()` | 执行 Noise XX 握手 |
+| `GetSas()` | 获取 SAS 字符串 |
+| `MarkVerified()` | 标记已验证 |
+| `IsVerified()` | 检查是否已验证 |
+| `GetRxKey()` | 获取接收密钥 |
+| `GetTxKey()` | 获取发送密钥 |
+| `IsHandshakeComplete()` | 检查握手是否完成 |
+| `TrustSave()` | 保存信任 |
+| `TrustLoad()` | 加载信任 |
 
 ---
 
-## 测试 Test
-
-运行单元测试验证 SAS 一致性、不同密钥对差异、验证标志和信任存储：
+## 测试
 
 ```bash
-gcc -o test_zrtp test_zrtp.c zrtp.c -lsodium
-./test_zrtp
+# 编译并运行测试
+g++ -std=c++20 -o test_noise test_noise.cpp noise.cpp noise-cpp/noise.cpp monocypher.c rng_get_bytes.c -I. -Inoise-cpp -lsodium
+./test_noise
 ```
 
 预期输出：
 
 ```bash
-=== ZRTP Module Test ===
+=== Noise Module Test ===
 
-✅ test_same_sas: PASSED
+✅ test_keypair_generation: PASSED
+✅ test_handshake: PASSED
    SAS: 1234 5678 9012 3456
-✅ test_different_sas: PASSED
-   SAS1: 1234 5678 9012 3456
-   SAS2: 6543 2109 8765 4321
 ✅ test_verified_flag: PASSED
    Verified: 0 -> 1
 ✅ test_trust_store: PASSED
@@ -138,18 +156,29 @@ Passed: 4/4
 
 ---
 
-## 依赖 Dependencies
+## 依赖
 
 - [libsodium](https://doc.libsodium.org/) 1.0.18+
+- [noise-cpp](https://github.com/ethindp/noise-cpp)（submodule）
 
 ---
 
-## 作者 Author
+## 协议说明
+
+- **握手模式**: Noise XX（交互式，双方身份隐藏）
+- **椭圆曲线**: X25519
+- **对称加密**: ChaCha20-Poly1305
+- **哈希函数**: BLAKE2s
+- **SAS 生成**: 4 组 4 位数字（从握手哈希派生）
+
+---
+
+## 作者
 
 Domirus / [domirus-lumora](https://github.com/domirus-lumora)
 
 ---
 
-## 许可证 License
+## 许可证
 
 Apache 2.0
