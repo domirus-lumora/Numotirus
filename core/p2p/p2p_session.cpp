@@ -1,12 +1,12 @@
 // core/p2p/p2p_session.cpp
-// P2P session management: peer key, ZRTP exchange, message sending.
-// P2P 会话管理：对端公钥、ZRTP 交换、消息发送。
+// P2P session management: peer key, Noise exchange, message sending.
+// P2P 会话管理：对端公钥、Noise 交换、消息发送。
 // SPDX-License-Identifier: Apache-2.0
 
 #include "p2p.h"
 #include "../crypto/crypto_c.h"
+#include "../protocol/noise.hpp"
 #include "kcp/ikcp.h"
-#include "../protocol/zrtp.h"
 #include "../transport/transport.hpp"
 
 #include <stdlib.h>
@@ -26,30 +26,20 @@
 #endif
 
 using namespace numotirus::transport;
+using namespace numotirus::protocol::noise;
 
-// Mutex operations (forward declarations from p2p_core.cpp).
-// 互斥锁操作（来自 p2p_core.cpp 的声明）。
-static void kcp_lock(P2PNode* n);
-static void kcp_unlock(P2PNode* n);
-
-// Helper: convert uint8_t[20] to NodeId.
-// 辅助函数：将 uint8_t[20] 转换为 NodeId。
 static NodeId MakeNodeId(const uint8_t* data) {
     NodeId id;
     memcpy(id.data(), data, 20);
     return id;
 }
 
-// KCP output callback context.
-// KCP 输出回调上下文。
 typedef struct {
     int sock;
     struct sockaddr_in peer_addr;
     int peer_addr_valid;
 } KcpCtx;
 
-// Set message callback.
-// 设置消息回调。
 void p2p_set_message_callback(P2PNode* n, p2p_message_callback cb) {
     if (!n) return;
     n->on_message = cb;
@@ -68,8 +58,6 @@ void p2p_set_message_callback(P2PNode* n, p2p_message_callback cb) {
     }
 }
 
-// Set peer's public key from raw bytes.
-// 从原始字节设置对方的公钥。
 int p2p_set_peer_key(P2PNode* n, const uint8_t* key) {
     if (!n || !key) return -1;
     memcpy(n->peer_key, key, P2P_PUBLIC_KEY_SIZE);
@@ -77,8 +65,6 @@ int p2p_set_peer_key(P2PNode* n, const uint8_t* key) {
     return 0;
 }
 
-// Set peer's public key from hex string.
-// 从十六进制字符串设置对方公钥。
 int p2p_set_peer_key_hex(P2PNode* n, const char* hex) {
     if (!n || !hex || strlen(hex) != 64) return -1;
     uint8_t key[P2P_PUBLIC_KEY_SIZE];
@@ -90,14 +76,10 @@ int p2p_set_peer_key_hex(P2PNode* n, const char* hex) {
     return p2p_set_peer_key(n, key);
 }
 
-// Check if peer key is set.
-// 检查是否已设置对方公钥。
 int p2p_is_peer_ready(const P2PNode* n) {
     return n ? n->peer_ready : 0;
 }
 
-// Send encrypted message.
-// 发送加密消息。
 int p2p_send(P2PNode* n, const char* ip, uint16_t port, const uint8_t* data, size_t len) {
     if (!n || !n->peer_ready) return -1;
 
@@ -142,64 +124,97 @@ int p2p_send(P2PNode* n, const char* ip, uint16_t port, const uint8_t* data, siz
     return (ret >= 0) ? 0 : -1;
 }
 
-// Start ZRTP key exchange.
-// 启动 ZRTP 密钥交换。
-int p2p_zrtp_start_exchange(P2PNode* n,
-                            p2p_zrtp_sas_callback on_sas,
-                            p2p_zrtp_result_callback on_result,
-                            void* user_data) {
+// Start Noise key exchange.
+// 启动 Noise 密钥交换。
+int p2p_noise_start_exchange(P2PNode* n,
+                             p2p_noise_sas_callback on_sas,
+                             p2p_noise_result_callback on_result,
+                             void* user_data) {
     if (!n || !n->peer_ready) {
         std::cout << "Peer key not set. 未设置对方公钥。\n";
         return -1;
     }
-    if (n->zrtp_exchanging) {
-        std::cout << "ZRTP already in progress. ZRTP 已在交换中。\n";
+    if (n->noise_exchanging) {
+        std::cout << "Noise already in progress. Noise 已在交换中。\n";
         return -1;
     }
 
-    if (!n->zrtp) {
-        n->zrtp = zrtp_session_new();
-        if (!n->zrtp) return -1;
-    }
+    auto session = std::make_unique<NoiseSession>();
+    if (!session) return -1;
 
-    zrtp_session_t* zrtp = (zrtp_session_t*)n->zrtp;
-    zrtp_session_set_keypair(zrtp, n->pub_key, n->sec_key);
-    zrtp_session_set_peer_public(zrtp, n->peer_key);
+    KeyPair kp;
+    memcpy(kp.public_key.data(), n->pub_key, 32);
+    memcpy(kp.secret_key.data(), n->sec_key, 32);
+    session->SetKeyPair(kp);
 
-    if (zrtp_session_key_exchange(zrtp) != ZRTP_SUCCESS) {
-        std::cout << "ZRTP key exchange failed. ZRTP 密钥交换失败。\n";
+    std::array<uint8_t, 32> peer_key;
+    memcpy(peer_key.data(), n->peer_key, 32);
+    session->SetPeerPublic(peer_key);
+
+    n->noise_session = session.release();
+    n->on_noise_sas = on_sas;
+    n->on_noise_result = on_result;
+    n->noise_user_data = user_data;
+    n->noise_exchanging = 1;
+
+    auto* sess = static_cast<NoiseSession*>(n->noise_session);
+
+    auto write_cb = [n](const uint8_t* data, size_t len) -> ErrorCode {
+        KcpCtx* ctx = (KcpCtx*)n->kcp_ctx;
+        if (!ctx->peer_addr_valid) return ErrorCode::kInvalidArgument;
+        int sent = sendto(n->sock, (const char*)data, len, 0,
+                          (struct sockaddr*)&ctx->peer_addr, sizeof(ctx->peer_addr));
+        return (sent > 0) ? ErrorCode::kSuccess : ErrorCode::kHandshakeFailed;
+    };
+
+    auto read_cb = [n](uint8_t* buffer, size_t len) -> ErrorCode {
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(n->sock, &fds);
+        struct timeval tv = {2, 0};
+        int ret = select(n->sock + 1, &fds, NULL, NULL, &tv);
+        if (ret <= 0) return ErrorCode::kHandshakeFailed;
+        struct sockaddr_in from;
+        socklen_t from_len = sizeof(from);
+        int nread = recvfrom(n->sock, (char*)buffer, len, 0,
+                             (struct sockaddr*)&from, &from_len);
+        if (nread <= 0) return ErrorCode::kHandshakeFailed;
+        return ErrorCode::kSuccess;
+    };
+
+    ErrorCode err = sess->Handshake(true, write_cb, read_cb);
+    if (err != ErrorCode::kSuccess) {
+        delete static_cast<NoiseSession*>(n->noise_session);
+        n->noise_session = nullptr;
+        n->noise_exchanging = 0;
+        std::cout << "Noise handshake failed. Noise 握手失败。\n";
         return -1;
     }
 
-    n->on_zrtp_sas = on_sas;
-    n->on_zrtp_result = on_result;
-    n->zrtp_user_data = user_data;
-    n->zrtp_exchanging = 1;
-
-    const char* sas = zrtp_session_get_sas(zrtp);
-    if (n->on_zrtp_sas) {
-        n->on_zrtp_sas(sas, n->zrtp_user_data);
+    std::string sas = sess->GetSas();
+    if (n->on_noise_sas) {
+        n->on_noise_sas(sas.c_str(), n->noise_user_data);
     }
 
     return 0;
 }
 
-// Confirm or reject ZRTP session after SAS verification.
-// SAS 验证后确认或拒绝 ZRTP 会话。
-void p2p_zrtp_confirm(P2PNode* n, int confirmed) {
-    if (!n || !n->zrtp_exchanging) return;
+// Confirm or reject Noise session after SAS verification.
+// SAS 验证后确认或拒绝 Noise 会话。
+void p2p_noise_confirm(P2PNode* n, int confirmed) {
+    if (!n || !n->noise_exchanging) return;
+    auto* sess = static_cast<NoiseSession*>(n->noise_session);
+    if (!sess) return;
 
-    zrtp_session_t* zrtp = (zrtp_session_t*)n->zrtp;
     if (confirmed) {
-        zrtp_session_mark_verified(zrtp);
+        sess->MarkVerified();
         std::cout << "Peer verified. 对方已验证。\n";
     } else {
         std::cout << "Verification rejected. 验证被拒绝。\n";
     }
 
-    if (n->on_zrtp_result) {
-        n->on_zrtp_result(confirmed, n->zrtp_user_data);
+    if (n->on_noise_result) {
+        n->on_noise_result(confirmed, n->noise_user_data);
     }
-
-    n->zrtp_exchanging = 0;
+    n->noise_exchanging = 0;
 }

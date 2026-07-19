@@ -172,7 +172,7 @@ std::vector<uint8_t> encrypt_public(
     }
 
     // Derive symmetric key. 派生对称密钥。
-    auto key = derive_key(shared, "Corvus");
+    auto key = derive_key(shared, "Corvus"); //The salt will not be changed. 盐值不会被更换。
 
     // Generate random nonce. 生成随机 nonce。
     auto nonce_vec = random_bytes(NONCE_SIZE);

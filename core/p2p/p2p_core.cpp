@@ -7,7 +7,7 @@
 #include "../crypto/crypto_c.h"
 #include "kcp/ikcp.h"
 #include "dht_c.h"
-#include "../protocol/zrtp.h"
+#include "../protocol/noise.hpp"
 #include "../transport/transport.hpp"
 
 #include <sodium.h>
@@ -87,8 +87,8 @@ static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
 #ifdef _WIN32
 static void kcp_lock_init(P2PNode* n) { InitializeCriticalSection((CRITICAL_SECTION*)n->kcp_mutex); }
 static void kcp_lock_destroy(P2PNode* n) { DeleteCriticalSection((CRITICAL_SECTION*)n->kcp_mutex); }
-static void kcp_lock(P2PNode* n) { EnterCriticalSection((CRITICAL_SECTION*)n->kcp_mutex); }
-static void kcp_unlock(P2PNode* n) { LeaveCriticalSection((CRITICAL_SECTION*)n->kcp_mutex); }
+void kcp_lock(P2PNode* n) { EnterCriticalSection((CRITICAL_SECTION*)n->kcp_mutex); }
+void kcp_unlock(P2PNode* n) { LeaveCriticalSection((CRITICAL_SECTION*)n->kcp_mutex); }
 #else
 static void kcp_lock_init(P2PNode* n) { pthread_mutex_init((pthread_mutex_t*)n->kcp_mutex, NULL); }
 static void kcp_lock_destroy(P2PNode* n) { pthread_mutex_destroy((pthread_mutex_t*)n->kcp_mutex); }
@@ -295,11 +295,13 @@ P2PNode* p2p_create(uint16_t port) {
     ikcp_wndsize(kcp, 128, 128);
     n->kcp = kcp;
 
-    n->zrtp = NULL;
-    n->on_zrtp_sas = NULL;
-    n->on_zrtp_result = NULL;
-    n->zrtp_user_data = NULL;
-    n->zrtp_exchanging = 0;
+    // Noise session (initially null).
+    // Noise 会话（初始为空）。
+    n->noise_session = NULL;
+    n->on_noise_sas = NULL;
+    n->on_noise_result = NULL;
+    n->noise_user_data = NULL;
+    n->noise_exchanging = 0;
 
     // Initialize DHT with a random node ID.
     // 用随机节点 ID 初始化 DHT。
@@ -441,9 +443,11 @@ void p2p_destroy(P2PNode* n) {
         n->kcp_mutex = NULL;
     }
 
-    if (n->zrtp) {
-        zrtp_session_free((zrtp_session_t*)n->zrtp);
-        n->zrtp = NULL;
+    // Clean up Noise session.
+    // 清理 Noise 会话。
+    if (n->noise_session) {
+        delete static_cast<numotirus::protocol::noise::NoiseSession*>(n->noise_session);
+        n->noise_session = NULL;
     }
 
     if (n->dht) {

@@ -1,0 +1,6 @@
+[submodule "core/protocol/noise-cpp"]
+	path = core/protocol/noise-cpp
+	url = https://github.com/ethindp/noise-cpp.git
+[submodule "core/p2p/kcp"]
+	path = core/p2p/kcp
+	url = https://github.com/skywind3000/kcp.git

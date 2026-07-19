@@ -6,12 +6,61 @@
 *.obj
 *.bin
 *.exp
+*.lib
+*.a
 
-# 本地脚本
-build.ps1
+# 可执行文件（根目录）
+p2p_chat
+p2p_chat.exe
+p2p_chat_debug
+p2p_chat_debug.exe
+
+# 对象文件
+*.o
+*.obj
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+*.out
 
 # IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 
-#Discord
-/discord
+# 本地脚本
+build.ps1
+build.bat
+*.sh
+*.cmd
+
+# Discord
+/discord/
+
+# 其他平台测试
+p2p_chat
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CMakeUserPresets.json
+*.cmake
+
+# 测试
+test_*.exe
+test_*.o
+*.test
+
+# 备份
+*.bak
+*.backup
+*.orig
+*.rej

@@ -4,7 +4,7 @@
 
 #include "transport.hpp"
 #include "../p2p/dht.hpp"
-#include "../p2p/udp_hole_punch.hpp"
+#include "../p2p/nat/udp_hole_punch.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>

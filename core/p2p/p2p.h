@@ -23,13 +23,13 @@ extern "C" {
 typedef void (*p2p_message_callback)(const char* ip, uint16_t port,
                                      const uint8_t* data, size_t len);
 
-// ZRTP SAS ready callback.
-// ZRTP SAS 就绪回调。
-typedef void (*p2p_zrtp_sas_callback)(const char* sas, void* user_data);
+// Noise SAS ready callback.
+// Noise SAS 就绪回调。
+typedef void (*p2p_noise_sas_callback)(const char* sas, void* user_data);
 
-// ZRTP verification result callback.
-// ZRTP 验证结果回调。
-typedef void (*p2p_zrtp_result_callback)(int confirmed, void* user_data);
+// Noise verification result callback.
+// Noise 验证结果回调。
+typedef void (*p2p_noise_result_callback)(int confirmed, void* user_data);
 
 // P2P node structure (opaque for C users, fully defined for internal use).
 // P2P 节点结构（对 C 用户不透明，内部完整定义）。
@@ -51,11 +51,13 @@ typedef struct P2PNode {
     char last_peer_ip[P2P_MAX_IP_LEN];
     uint16_t last_peer_port;
 
-    void* zrtp;
-    p2p_zrtp_sas_callback on_zrtp_sas;
-    p2p_zrtp_result_callback on_zrtp_result;
-    void* zrtp_user_data;
-    int zrtp_exchanging;
+    // Noise session fields.
+    // Noise 会话字段。
+    void* noise_session;                           // NoiseSession* (C++ object)
+    p2p_noise_sas_callback on_noise_sas;          // SAS callback
+    p2p_noise_result_callback on_noise_result;    // Verification result callback
+    void* noise_user_data;                        // User data for callbacks
+    int noise_exchanging;                         // 1 if exchange in progress
 
     void* dht;
     void* transport;
@@ -64,11 +66,11 @@ typedef struct P2PNode {
 #ifdef _WIN32
     void* recv_thread;
     void* kcp_thread;
-    void* dht_bootstrap_thread;   // DHT bootstrap thread handle. DHT 引导线程句柄。
+    void* dht_bootstrap_thread;
 #else
     void* recv_thread;
     void* kcp_thread;
-    void* dht_bootstrap_thread;   // DHT bootstrap thread handle. DHT 引导线程句柄。
+    void* dht_bootstrap_thread;
 #endif
 } P2PNode;
 
@@ -109,23 +111,33 @@ int p2p_is_peer_ready(const P2PNode* node);
 int p2p_send(P2PNode* node, const char* ip, uint16_t port,
              const uint8_t* data, size_t len);
 
-// Start ZRTP key exchange.
-// 启动 ZRTP 密钥交换。
-int p2p_zrtp_start_exchange(P2PNode* node,
-                            p2p_zrtp_sas_callback on_sas,
-                            p2p_zrtp_result_callback on_result,
-                            void* user_data);
+// Start Noise key exchange.
+// 启动 Noise 密钥交换。
+int p2p_noise_start_exchange(P2PNode* node,
+                             p2p_noise_sas_callback on_sas,
+                             p2p_noise_result_callback on_result,
+                             void* user_data);
 
-// Confirm or reject ZRTP session after SAS verification.
-// SAS 验证后确认或拒绝 ZRTP 会话。
-void p2p_zrtp_confirm(P2PNode* node, int confirmed);
+// Confirm or reject Noise session after SAS verification.
+// SAS 验证后确认或拒绝 Noise 会话。
+void p2p_noise_confirm(P2PNode* node, int confirmed);
+
+// Get Noise session keys for encryption.
+// 获取 Noise 会话密钥用于加密。
+int p2p_noise_get_keys(P2PNode* node, uint8_t* rx_key, uint8_t* tx_key);
+
+// Clean up Noise session.
+// 清理 Noise 会话。
+void p2p_noise_cleanup(P2PNode* node);
 
 // Get the DHT handle for debugging.
 // 获取 DHT 句柄用于调试。
 void* p2p_get_dht(P2PNode* node);
+void kcp_lock(P2PNode* n);
+void kcp_unlock(P2PNode* n);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif // P2P_H

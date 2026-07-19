@@ -33,22 +33,32 @@ export LDFLAGS="-arch arm64 -isysroot $SDK_PATH"
 echo "🔨 Building for iOS (arm64)..."
 
 # 编译 / Build
-$CXX -std=c++20 -c core/p2p/dht.cpp -o dht.o $CXXFLAGS
-$CXX -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/dht.cpp -o dht.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/dht_c.cpp -o dht_c.o -Icore/p2p $CXXFLAGS
 $CC -c core/p2p/kcp/ikcp.c -o ikcp.o $CFLAGS
 $CC -c core/crypto/crypto_c.c -o crypto_c.o -Icore/crypto $CFLAGS
-$CC -c core/protocol/zrtp.c -o zrtp.o -Icore/protocol -Icore/crypto $CFLAGS
-$CXX -std=c++20 -c core/p2p/p2p.cpp -o p2p.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport $CXXFLAGS
-$CXX -std=c++20 -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport $CXXFLAGS
+
+# noise-cpp 源文件
+$CXX -std=c++20 -c core/protocol/noise-cpp/noise.cpp -Icore/protocol/noise-cpp -o noise_cpp.o $CXXFLAGS
+$CC -c core/protocol/noise-cpp/monocypher.c -Icore/protocol/noise-cpp -o monocypher.o $CFLAGS
+$CC -c core/protocol/noise-cpp/rng_get_bytes.c -Icore/protocol/noise-cpp -o rng_get_bytes.o $CFLAGS
+
+# Noise protocol. Noise 协议封装
+$CXX -std=c++20 -c core/protocol/noise.cpp -o noise.o -Icore/protocol -Icore/protocol/noise-cpp -Icore $CXXFLAGS
+
+# P2P. P2P 模块
+$CXX -std=c++20 -c core/p2p/p2p_core.cpp -o p2p_core.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport -Icore/protocol/noise-cpp -Icore $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/p2p_session.cpp -o p2p_session.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport -Icore/protocol/noise-cpp -Icore $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/p2p_chat.cpp -o p2p_chat.o -Icore/p2p -Icore/crypto -Icore/protocol -Icore/transport -Icore/protocol/noise-cpp -Icore $CXXFLAGS
 
 # NAT 模块
-$CXX -std=c++20 -c core/p2p/nat_stun.cpp -o nat_stun.o -Icore/p2p $CXXFLAGS
-$CXX -std=c++20 -c core/p2p/udp_hole_punch.cpp -o udp_hole_punch.o -Icore/p2p $CXXFLAGS
-$CXX -std=c++20 -c core/p2p/port_prediction.cpp -o port_prediction.o -Icore/p2p $CXXFLAGS
-$CXX -std=c++20 -c core/p2p/nat_traversal.cpp -o nat_traversal.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/nat/nat_stun.cpp -o nat_stun.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/nat/udp_hole_punch.cpp -o udp_hole_punch.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/nat/port_prediction.cpp -o port_prediction.o -Icore/p2p $CXXFLAGS
+$CXX -std=c++20 -c core/p2p/nat/nat_traversal.cpp -o nat_traversal.o -Icore/p2p $CXXFLAGS
 
 # 传输层模块
-$CXX -std=c++20 -c core/transport/transport.cpp -o transport.o -Icore/p2p -Icore/crypto -Icore/transport $CXXFLAGS
+$CXX -std=c++20 -c core/transport/transport.cpp -o transport.o -Icore/p2p -Icore/crypto -Icore/transport -Icore/protocol/noise-cpp -Icore $CXXFLAGS
 
 # 打包成静态库 / Package as static library
 ar rcs libnumotirus.a *.o

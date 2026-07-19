@@ -20,7 +20,7 @@ struct CryptoKeypair {
 };
 
 static void derive_key(const uint8_t* shared, uint8_t* key) {
-    const char* salt = "Corvus";
+    const char* salt = "Corvus"; //We will not change this salt. 我们不会更换盐值。
     crypto_generichash(key, SYMMETRIC_KEY_SIZE,
                        shared, SHARED_SECRET_SIZE,
                        (const unsigned char*)salt, strlen(salt));

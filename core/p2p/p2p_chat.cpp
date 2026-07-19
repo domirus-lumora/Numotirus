@@ -1,6 +1,6 @@
 // core/p2p/p2p_chat.cpp
-// Command line chat demo using asynchronous ZRTP.
-// 使用异步 ZRTP 的命令行聊天演示。
+// Command line chat demo using asynchronous Noise.
+// 使用异步 Noise 的命令行聊天演示。
 // SPDX-License-Identifier: Apache-2.0
 
 #include "p2p.h"
@@ -16,28 +16,28 @@
 #endif
 
 static P2PNode *g_node = nullptr;
-static int g_zrtp_waiting = 0;
+static int g_noise_waiting = 0;
 
-// ZRTP SAS ready callback.
-// ZRTP SAS 就绪回调。
-void on_sas_ready(const char *sas, void *user_data) {
+// Noise SAS ready callback.
+// Noise SAS 就绪回调。
+void on_noise_sas_ready(const char *sas, void *user_data) {
     (void)user_data;
     std::cout << "\n========================================\n";
-    std::cout << "ZRTP SAS:\n";
+    std::cout << "Noise SAS:\n";
     std::cout << "  " << sas << "\n";
     std::cout << "Type 'y' to confirm, 'n' to reject. 输入 'y' 确认，'n' 拒绝。\n> ";
     std::cout.flush();
-    g_zrtp_waiting = 1;
+    g_noise_waiting = 1;
 }
 
-// ZRTP verification result callback.
-// ZRTP 验证结果回调。
-void on_zrtp_result(int confirmed, void *user_data) {
+// Noise verification result callback.
+// Noise 验证结果回调。
+void on_noise_result(int confirmed, void *user_data) {
     (void)user_data;
     if (confirmed) {
-        std::cout << "\n✅ ZRTP verified. ZRTP 验证成功。\n";
+        std::cout << "\n✅ Noise verified. Noise 验证成功。\n";
     } else {
-        std::cout << "\n❌ ZRTP rejected. ZRTP 被拒绝。\n";
+        std::cout << "\n❌ Noise rejected. Noise 被拒绝。\n";
     }
     std::cout << "> ";
     std::cout.flush();
@@ -71,8 +71,6 @@ int main(int argc, char **argv) {
     }
     g_node = node;
 
-    // Set the message callback (corrected function name).
-    // 设置消息回调（修正函数名）。
     p2p_set_message_callback(node, on_message);
     p2p_start(node);
 
@@ -108,8 +106,8 @@ int main(int argc, char **argv) {
                 peer_pub[i] = static_cast<uint8_t>(val);
             }
             p2p_set_peer_key(node, peer_pub);
-            std::cout << "Peer key set. Starting ZRTP... 对方公钥已设置，启动 ZRTP...\n";
-            p2p_zrtp_start_exchange(node, on_sas_ready, on_zrtp_result, nullptr);
+            std::cout << "Peer key set. Starting Noise... 对方公钥已设置，启动 Noise...\n";
+            p2p_noise_start_exchange(node, on_noise_sas_ready, on_noise_result, nullptr);
         }
     }
 
@@ -126,13 +124,13 @@ int main(int argc, char **argv) {
         line[std::strcspn(line, "\n")] = 0;
         if (std::strlen(line) == 0) continue;
 
-        if (g_zrtp_waiting) {
+        if (g_noise_waiting) {
             if (line[0] == 'y' || line[0] == 'Y') {
-                p2p_zrtp_confirm(g_node, 1);
-                g_zrtp_waiting = 0;
+                p2p_noise_confirm(g_node, 1);
+                g_noise_waiting = 0;
             } else if (line[0] == 'n' || line[0] == 'N') {
-                p2p_zrtp_confirm(g_node, 0);
-                g_zrtp_waiting = 0;
+                p2p_noise_confirm(g_node, 0);
+                g_noise_waiting = 0;
             } else {
                 std::cout << "Type 'y' or 'n'. 输入 'y' 或 'n'。\n> ";
                 std::cout.flush();
@@ -148,13 +146,6 @@ int main(int argc, char **argv) {
                 peer_port = static_cast<uint16_t>(port);
                 send_mode = 1;
                 std::cout << "Peer set to " << peer_ip << ":" << peer_port << ". 对方地址已设为 " << peer_ip << ":" << peer_port << "。\n";
-
-                // NAT traversal is not yet integrated into the core API.
-                // NAT 穿透尚未集成到核心 API 中。
-                // TODO: add p2p_nat_start_traversal when available.
-                // char candidates[128];
-                // std::snprintf(candidates, sizeof(candidates), "%s:%d", peer_ip, peer_port);
-                // p2p_nat_start_traversal(g_node, candidates);
             } else {
                 std::cout << "Usage: /peer <ip> <port>\n";
             }
@@ -169,8 +160,8 @@ int main(int argc, char **argv) {
                     peer_pub[i] = static_cast<uint8_t>(val);
                 }
                 p2p_set_peer_key(node, peer_pub);
-                std::cout << "Peer key set. Starting ZRTP... 对方公钥已设置，启动 ZRTP...\n";
-                p2p_zrtp_start_exchange(node, on_sas_ready, on_zrtp_result, nullptr);
+                std::cout << "Peer key set. Starting Noise... 对方公钥已设置，启动 Noise...\n";
+                p2p_noise_start_exchange(node, on_noise_sas_ready, on_noise_result, nullptr);
             } else {
                 std::cout << "Invalid key. 无效公钥。\n";
             }
