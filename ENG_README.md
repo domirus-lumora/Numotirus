@@ -1,59 +1,97 @@
-# Numotirus — The Messenger Protocol
+# Numotirus —— DETAILED Branch
 
-**Decentralized Key Exchange · No Central Server · Open Communication Infrastructure**
-Numotirus is not a "chat app". It is a communication protocol. No company runs the servers. No platform moderates your content. No age gates. You hold your keys. You build your connections. You decide who can find you.
+**English | [中文版](./README.md)**
 
-Not "social media". Social infrastructure.
+This is not an ordinary code branch. It is the "learning edition" of Numotirus.
 
-📖 **[Read this talk](./docs/ENG_humanity.md)** — A monologue about connection, disaster, and trust.
+---
 
-## Why Numotirus?
+## Why does this branch exist?
 
-Because centralized platforms are controlling our conversations. Because age, identity, and location are becoming barriers to speech. Because code should not be "banned" — code should be built, together.
+The code in the `main` branch is complicated. It runs, but it doesn't tell you *why* it was written that way.
 
-## What can it do?
+The `DETAILED` branch is where I (Domirus) read the code line by line and write down my understanding as comments. Its goal is: **to help the next person who doesn't understand find answers here.**
 
-| Feature | Description |
-| --------- | ------------- |
-| **Key Exchange** | Noise protocol — XX pattern handshake + SAS verification. You own your identity. |
-| **P2P Communication** | UDP + KCP reliable transport. Direct node-to-node messaging. No central server. |
-| **Open Source** | Apache 2.0 — view, modify, and distribute freely. |
-| **Embeddable** | Lumora integration planned as default assistant. |
+This branch is not written for "experts." It is written for people who want to learn but don't know where to start.
 
-## Tech Stack
+---
 
-- **Core Protocol**: C++20 + C11 (cross-platform)
-- **Network Layer**: Custom P2P stack (UDP + KCP + non-blocking `select()`)
-- **Cryptography**: libsodium (X25519 + XChaCha20-Poly1305 + Noise)
-- **GUI**: C# / Avalonia (cross-platform, in development)
+## What it is NOT
 
-## Not a One-Person Project
+- ❌ Not "official documentation" — these comments are personal understanding, may contain errors
+- ❌ Not "the final answer" — comments will be updated as my understanding deepens
+- ❌ Not for "production" — this branch is for learning, not for running
 
-This is open source. This is community. This is yours.
+---
 
-You don't need to "register". You just need to "download".
-You don't need to be "approved". You just need to hold your keys.
-You don't need to "wait for permission". You just need to run the code.
+## What it IS
 
-## Status
+- ✅ **Learning notes** — every comment represents "this is how I understood it at the time"
+- ✅ **Signposts** — if you're stuck on a piece of code, these comments might just help you through it
 
-🚧 Core protocol and P2P layer have working implementations. Contributions welcome.
+---
 
-- [x] Key exchange protocol (Noise XX + SAS)
-- [x] P2P network layer (UDP + KCP + cross-platform)
-- [ ] GUI client prototype
-- [ ] Lumora integration
+## How to use
 
-## License
+```bash
+git checkout DETAILED
+```
 
-Apache 2.0. Use it, modify it, include it in your own projects. Just keep the [copyright notice](./LICENSE).
+Start with `core/crypto/crypto.cpp`, from the `derive_key` function.
 
-## Join Us
+**Comment format:**
 
-This is not a cry for help. It's a call for collaboration.
+- `// DOMIRUS:` — my understanding
+- `// AI:` — AI-generated explanation (kept for reference)
+- `// TODO:` — not yet understood, leaving it for later
 
-- **Repository**: [https://github.com/domirus-lumora/Numotirus](https://github.com/domirus-lumora/Numotirus)
-- **Issues**: [https://github.com/domirus-lumora/Numotirus/issues](https://github.com/domirus-lumora/Numotirus/issues)
-- **Discussions**: [Discord](https://discord.com/invite/KdjnEtpSP8)
+---
 
-You're not "helping Domirus". You're building a better internet.
+## Modules covered so far
+
+| Module | File | Status |
+| -------- | ------ | -------- |
+| Crypto Layer | `core/crypto/crypto.cpp` | 🟡 In progress |
+| Crypto Test | `core/crypto/crypto_test.cpp` | ⬜ Not started |
+| DHT Routing | `core/p2p/dht.cpp` | ⬜ Not started |
+| P2P Core | `core/p2p/p2p_core.cpp` | ⬜ Not started |
+| Noise Protocol | `core/protocol/noise.cpp` | ⬜ Not started |
+| Transport Layer | `core/transport/transport.cpp` | ⬜ Not started |
+
+🟡 In progress · ⬜ Not started · ✅ Complete
+
+---
+
+## Maintenance of this branch
+
+- I will keep updating it as I learn
+- Speed is not the goal — **clarity** is
+- If I find earlier comments were wrong, I'll correct them
+- I will not delete "I don't understand this yet" just to look professional
+
+---
+
+## How to contribute
+
+If you're also reading Numotirus code:
+
+1. Switch to the `DETAILED` branch
+2. Add comments next to code you understand (format: `// [your-name]:`)
+3. Submit a PR
+4. After review, it gets merged
+
+You don't need to write C++ code. You just need to write down **what you understood**.
+
+---
+
+## Finally
+
+Numotirus is a project that says: **"First let people understand, then let people use."** The `DETAILED` branch is the first part of that promise.
+
+If you're willing to learn and write as you go, you're welcome here.
+
+—— Domirus
+
+---
+
+**Your keys are in your hands. Your understanding is welcome here.**
