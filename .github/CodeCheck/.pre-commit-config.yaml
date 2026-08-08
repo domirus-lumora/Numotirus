@@ -1,0 +1,71 @@
+# Pre-commit hooks configuration. Pre-commit 钩子配置。
+repos:
+  # General hooks. 通用钩子。
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        files: \.(c|cpp|h|hpp|py|sh|md)$
+      - id: end-of-file-fixer
+        files: \.(c|cpp|h|hpp|py|sh|md)$
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: detect-private-key
+      - id: check-merge-conflict
+
+  # clang-format. 代码格式化。
+  - repo: https://github.com/cpp-linter/cpp-linter-hooks
+    rev: v1.1.11
+    hooks:
+      - id: clang-format
+        args: [--style=file:.github/CodeCheck/clang-format]
+        files: \.(c|cpp|h|hpp|cc|hh)$
+
+  # clang-tidy for C++. C++ 静态分析。
+  - repo: https://github.com/cpp-linter/cpp-linter-hooks
+    rev: v1.1.11
+    hooks:
+      - id: clang-tidy
+        args: 
+          - --checks='readability-*,cppcoreguidelines-*,modernize-*,llvm-include-order'
+          - --config-file=.github/CodeCheck/clang-tidy
+        files: \.(cpp|hpp)$
+
+  # Custom C style checks. 自定义 C 代码规范检查。
+  - repo: local
+    hooks:
+      - id: check-c-coding-style
+        name: Check C11 coding style. 检查 C11 代码规范。
+        entry: python3 .github/CodeCheck/scripts/check_c_coding_style.py
+        language: python
+        files: \.(c|h)$
+        additional_dependencies: []
+
+      - id: check-cpp-coding-style
+        name: Check C++20 coding style. 检查 C++20 代码规范。
+        entry: python3 .github/CodeCheck/scripts/check_cpp_coding_style.py
+        language: python
+        files: \.(cpp|hpp)$
+        additional_dependencies: []
+
+      - id: check-comment-style
+        name: Check comment style. 检查注释规范。
+        entry: python3 .github/CodeCheck/scripts/check_comment_style.py
+        language: python
+        files: \.(c|cpp|h|hpp)$
+        additional_dependencies: []
+
+      - id: check-l10n
+        name: Check L10N_PENDING format. 检查 L10N_PENDING 占位符格式。
+        entry: python3 .github/CodeCheck/scripts/check_l10n.py
+        language: python
+        files: \.(c|cpp|h|hpp)$
+        additional_dependencies: []
+
+      - id: check-ai-declaration
+        name: Check AI usage declaration. 检查 AI 使用声明。
+        entry: python3 .github/CodeCheck/scripts/check_ai_declaration.py
+        language: python
+        files: \.(c|cpp|h|hpp)$
+        additional_dependencies: []
