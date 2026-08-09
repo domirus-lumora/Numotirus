@@ -6,13 +6,19 @@ repos:
     hooks:
       - id: trailing-whitespace
         files: \.(c|cpp|h|hpp|py|sh|md)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
       - id: end-of-file-fixer
         files: \.(c|cpp|h|hpp|py|sh|md)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
       - id: check-yaml
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
       - id: check-added-large-files
         args: ['--maxkb=500']
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
       - id: detect-private-key
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
       - id: check-merge-conflict
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
 
   # clang-format. 代码格式化。
   - repo: https://github.com/cpp-linter/cpp-linter-hooks
@@ -21,6 +27,7 @@ repos:
       - id: clang-format
         args: [--style=file:.github/CodeCheck/clang-format]
         files: \.(c|cpp|h|hpp|cc|hh)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
 
   # clang-tidy for C++. C++ 静态分析。
   - repo: https://github.com/cpp-linter/cpp-linter-hooks
@@ -31,6 +38,7 @@ repos:
           - --checks='readability-*,cppcoreguidelines-*,modernize-*,llvm-include-order'
           - --config-file=.github/CodeCheck/clang-tidy
         files: \.(cpp|hpp)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
 
   # Custom C style checks. 自定义 C 代码规范检查。
   - repo: local
@@ -40,25 +48,33 @@ repos:
         entry: python3 .github/CodeCheck/scripts/check_c_coding_style.py
         language: python
         files: \.(c|h)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
         additional_dependencies: []
+        pass_filenames: false
 
       - id: check-cpp-coding-style
         name: Check C++20 coding style. 检查 C++20 代码规范。
         entry: python3 .github/CodeCheck/scripts/check_cpp_coding_style.py
         language: python
         files: \.(cpp|hpp)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
         additional_dependencies: []
+        pass_filenames: false
 
       - id: check-comment-style
         name: Check comment style. 检查注释规范。
         entry: python3 .github/CodeCheck/scripts/check_comment_style.py
         language: python
         files: \.(c|cpp|h|hpp)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
         additional_dependencies: []
+        pass_filenames: false
 
       - id: check-l10n
         name: Check L10N_PENDING format. 检查 L10N_PENDING 占位符格式。
         entry: python3 .github/CodeCheck/scripts/check_l10n.py
         language: python
         files: \.(c|cpp|h|hpp)$
+        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
         additional_dependencies: []
+        pass_filenames: false
