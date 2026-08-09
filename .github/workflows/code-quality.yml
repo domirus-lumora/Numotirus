@@ -26,18 +26,30 @@ jobs:
       - name: Run clang-format. 运行 clang-format。
         run: |
           find . \( -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) \
+            ! -path "./legacy/*" \
+            ! -path "./old/*" \
+            ! -path "./third_party/*" \
+            ! -path "./deps/*" \
+            ! -path "./core/p2p/kcp/*" \
+            ! -path "./core/protocol/noise-cpp/*" \
             -exec clang-format --style=file:.github/CodeCheck/clang-format --dry-run --Werror {} +
 
       - name: Run clang-tidy (C++). 运行 clang-tidy（C++）。
         run: |
           find . \( -name "*.cpp" -o -name "*.hpp" \) \
+            ! -path "./legacy/*" \
+            ! -path "./old/*" \
+            ! -path "./third_party/*" \
+            ! -path "./deps/*" \
+            ! -path "./core/p2p/kcp/*" \
+            ! -path "./core/protocol/noise-cpp/*" \
             -exec clang-tidy --config-file=.github/CodeCheck/clang-tidy \
               --checks='readability-*,cppcoreguidelines-*,modernize-*,llvm-include-order' {} -- \;
         continue-on-error: false
 
       - name: Run cppcheck (C). 运行 cppcheck（C）。
         run: |
-          C_FILES=$(find . -name "*.c" | tr '\n' ' ')
+          C_FILES=$(find . -name "*.c" ! -path "./legacy/*" ! -path "./old/*" ! -path "./third_party/*" ! -path "./deps/*" ! -path "./core/p2p/kcp/*" ! -path "./core/protocol/noise-cpp/*" | tr '\n' ' ')
           if [ -n "$C_FILES" ]; then
             cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem $C_FILES
           fi
