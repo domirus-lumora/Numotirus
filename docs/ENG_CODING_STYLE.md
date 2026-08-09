@@ -404,7 +404,7 @@ Format: `* L10N_PENDING [author-YYYYMMDD:HHMMSS] *`
 
 ### 5. Why These Rules
 
-Not because AI is bad.  
+Not because AI is bad.
 Because **you must be the master of the code. AI is just a tool**.
 
 - You read the ZRTP RFC, AI helps write the framework → ✅
@@ -441,6 +441,6 @@ Because **you must be the master of the code. AI is just a tool**.
 
 ---
 
-**Document Version**: 2.0  
-**Language Standards**: C11 + C++20  
+**Document Version**: 2.0
+**Language Standards**: C11 + C++20
 **Last Updated**: 2026-06-09

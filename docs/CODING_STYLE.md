@@ -52,7 +52,7 @@ void encrypt(const uint8_t* input, size_t len);
 ```
 
 ```cpp
-// Returns decrypted data on success. 
+// Returns decrypted data on success.
 //成功时返回解密数据。
 
 Result<std::vector<uint8_t>> Decrypt(std::span<const uint8_t> ciphertext);
@@ -409,7 +409,7 @@ void SomeFunction(); // * L10N_PENDING [DOMIRUS-20260613:235901] *
 
 ### 5. 为什么要写这些规则
 
-不是因为 AI 不好。  
+不是因为 AI 不好。
 是因为**你必须是代码的主人，AI 只是工具**。
 
 - 你读 ZRTP RFC，AI 帮你写框架 → ✅
@@ -446,6 +446,6 @@ void SomeFunction(); // * L10N_PENDING [DOMIRUS-20260613:235901] *
 
 ---
 
-**文档版本**：2.0  
-**语言标准**：C11 + C++20  
+**文档版本**：2.0
+**语言标准**：C11 + C++20
 **最后更新**：2026-06-09

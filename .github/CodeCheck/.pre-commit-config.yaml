@@ -25,7 +25,7 @@ repos:
     rev: v1.1.11
     hooks:
       - id: clang-format
-        args: [--style=file:.github/CodeCheck/clang-format]
+        args: [--style=file:.github/CodeCheck/clang-format, --dry-run]
         files: \.(c|cpp|h|hpp|cc|hh)$
         exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
 
