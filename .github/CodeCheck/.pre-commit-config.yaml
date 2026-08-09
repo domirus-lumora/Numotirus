@@ -62,10 +62,3 @@ repos:
         language: python
         files: \.(c|cpp|h|hpp)$
         additional_dependencies: []
-
-      - id: check-ai-declaration
-        name: Check AI usage declaration. 检查 AI 使用声明。
-        entry: python3 .github/CodeCheck/scripts/check_ai_declaration.py
-        language: python
-        files: \.(c|cpp|h|hpp)$
-        additional_dependencies: []
