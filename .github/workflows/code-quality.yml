@@ -32,19 +32,18 @@ jobs:
             ! -path "./deps/*" \
             ! -path "./core/p2p/kcp/*" \
             ! -path "./core/protocol/noise-cpp/*" \
-            -exec clang-format --style=file:.github/CodeCheck/clang-format --dry-run --Werror {} +
+            -exec clang-format --style=file --dry-run --Werror {} +
 
       - name: Run clang-tidy (C++). 运行 clang-tidy（C++）。
         run: |
-          find . \( -name "*.cpp" -o -name "*.hpp" \) \
+          find . \( -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.hh" \) \
             ! -path "./legacy/*" \
             ! -path "./old/*" \
             ! -path "./third_party/*" \
             ! -path "./deps/*" \
             ! -path "./core/p2p/kcp/*" \
             ! -path "./core/protocol/noise-cpp/*" \
-            -exec clang-tidy --config-file=.github/CodeCheck/clang-tidy \
-              --checks='readability-*,cppcoreguidelines-*,modernize-*,llvm-include-order' {} -- \;
+            -exec clang-tidy --config-file=.clang-tidy {} -- \;
         continue-on-error: false
 
       - name: Run cppcheck (C). 运行 cppcheck（C）。
@@ -53,12 +52,6 @@ jobs:
           if [ -n "$C_FILES" ]; then
             cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem $C_FILES
           fi
-
-      - name: Run custom C style checks. 运行自定义 C 代码规范检查。
-        run: python3 .github/CodeCheck/scripts/check_c_coding_style.py
-
-      - name: Run custom C++ style checks. 运行自定义 C++ 代码规范检查。
-        run: python3 .github/CodeCheck/scripts/check_cpp_coding_style.py
 
       - name: Run comment style checks. 运行注释规范检查。
         run: python3 .github/CodeCheck/scripts/check_comment_style.py

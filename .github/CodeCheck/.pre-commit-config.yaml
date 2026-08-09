@@ -1,4 +1,6 @@
 # Pre-commit hooks configuration. Pre-commit 钩子配置。
+# All hooks run on staged files. 所有钩子在暂存文件上运行。
+
 repos:
   # General hooks. 通用钩子。
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -20,61 +22,53 @@ repos:
       - id: check-merge-conflict
         exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
 
-  # clang-format. 代码格式化。
+  # clang-format: auto‑format code. 自动格式化代码。
   - repo: https://github.com/cpp-linter/cpp-linter-hooks
     rev: v1.1.11
     hooks:
       - id: clang-format
-        args: [--style=file:.github/CodeCheck/clang-format, --dry-run]
+        args: [--style=file]   # reads .clang-format from repo root. 从仓库根目录读取 .clang-format。
         files: \.(c|cpp|h|hpp|cc|hh)$
         exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
 
-  # clang-tidy for C++. C++ 静态分析。
+  # clang-tidy: static analysis for C++ (only checks, no auto-fix). C++ 静态分析（仅检查，不自动修复）。
   - repo: https://github.com/cpp-linter/cpp-linter-hooks
     rev: v1.1.11
     hooks:
       - id: clang-tidy
-        args: 
-          - --checks='readability-*,cppcoreguidelines-*,modernize-*,llvm-include-order'
-          - --config-file=.github/CodeCheck/clang-tidy
-        files: \.(cpp|hpp)$
+        args:
+          - --config-file=.clang-tidy          # 使用根目录的配置文件
+        files: \.(cpp|hpp|cc|hh)$
         exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
 
-  # Custom C style checks. 自定义 C 代码规范检查。
+  # Custom hooks (only for checks not covered by standard tools). 自定义钩子（仅用于标准工具未覆盖的检查）。
   - repo: local
     hooks:
-      - id: check-c-coding-style
-        name: Check C11 coding style. 检查 C11 代码规范。
-        entry: python3 .github/CodeCheck/scripts/check_c_coding_style.py
-        language: python
-        files: \.(c|h)$
-        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
-        additional_dependencies: []
-        pass_filenames: false
-
-      - id: check-cpp-coding-style
-        name: Check C++20 coding style. 检查 C++20 代码规范。
-        entry: python3 .github/CodeCheck/scripts/check_cpp_coding_style.py
-        language: python
-        files: \.(cpp|hpp)$
-        exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
-        additional_dependencies: []
-        pass_filenames: false
-
+      # Check that public interfaces have comments. 检查公共接口是否有注释。
       - id: check-comment-style
         name: Check comment style. 检查注释规范。
         entry: python3 .github/CodeCheck/scripts/check_comment_style.py
         language: python
         files: \.(c|cpp|h|hpp)$
         exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
+        pass_filenames: true
         additional_dependencies: []
-        pass_filenames: false
 
+      # Check L10N_PENDING placeholder format. 检查 L10N_PENDING 占位符格式。
       - id: check-l10n
         name: Check L10N_PENDING format. 检查 L10N_PENDING 占位符格式。
         entry: python3 .github/CodeCheck/scripts/check_l10n.py
         language: python
         files: \.(c|cpp|h|hpp)$
         exclude: ^(legacy/|old/|third_party/|deps/|core/p2p/kcp/|core/protocol/noise-cpp/)
+        pass_filenames: true
         additional_dependencies: []
-        pass_filenames: false
+
+      # Scan third-party dependencies (warning only). 扫描第三方依赖（仅警告）。
+      - id: check-dependencies
+        name: Scan third-party dependencies. 扫描第三方依赖。
+        entry: python3 .github/CodeCheck/scripts/check_dependencies.py
+        language: python
+        files: \.(c|cpp|h|hpp|cmake|txt|json)$
+        pass_filenames: false   # 脚本会自行扫描整个仓库
+        additional_dependencies: []

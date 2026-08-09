@@ -1,4 +1,6 @@
 # Clang-Tidy configuration for C++ static analysis. C++ 静态分析配置。
+# All checks follow the project coding standard. 所有检查遵循项目编码规范。
+
 Checks: >
   readability-*,
   cppcoreguidelines-*,
@@ -6,26 +8,49 @@ Checks: >
   llvm-include-order,
   bugprone-*,
   performance-*,
-  -readability-identifier-naming,
+  -readability-identifier-naming,      # 命名由下方的选项单独控制
   -cppcoreguidelines-avoid-magic-numbers
 
 CheckOptions:
+  # Variables: snake_case. 变量：snake_case。
   - key: readability-identifier-naming.VariableCase
     value: snake_case
+
+  # Functions (C++): PascalCase. C++ 函数：PascalCase。
   - key: readability-identifier-naming.FunctionCase
-    value: camel_back
+    value: CamelCase
+
+  # Classes/Structs: PascalCase. 类/结构体：PascalCase。
   - key: readability-identifier-naming.ClassCase
     value: CamelCase
   - key: readability-identifier-naming.StructCase
     value: CamelCase
+
+  # Private members: trailing underscore. 私有成员：末尾加 _。
   - key: readability-identifier-naming.PrivateMemberSuffix
     value: _
+
+  # Constants: kPascalCase (prefix 'k'). 常量：kPascalCase（前缀 k）。
   - key: readability-identifier-naming.ConstantCase
     value: CamelCase
+  - key: readability-identifier-naming.ConstantPrefix
+    value: k
+
+  # Enums: PascalCase. 枚举类：PascalCase。
   - key: readability-identifier-naming.EnumCase
     value: CamelCase
+
+  # Enum constants: kPascalCase. 枚举值：kPascalCase。
   - key: readability-identifier-naming.EnumConstantCase
     value: CamelCase
+  - key: readability-identifier-naming.EnumConstantPrefix
+    value: k
+
+  # Global constants (optional UPPER_CASE, preserved for C style). 全局常量（可选 UPPER_CASE，保留 C 风格）。
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
+
+  # Enforce modern C++ rules. 强制现代 C++ 规则。
   - key: modernize-use-nullptr
     value: true
   - key: cppcoreguidelines-pro-type-cstyle-cast

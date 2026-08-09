@@ -1,119 +1,96 @@
 #!/usr/bin/env python3
 """
 Comment style checker. 注释规范检查器。
-Checks: public interfaces (functions, classes, structs) must have comments.
-检查项：公共接口（函数、类、结构体）必须有注释。
+Checks that public interfaces (functions, classes, structs) have comments.
+检查公共接口（函数、类、结构体）是否有注释。
 """
 
 import re
 import sys
 import subprocess
 import os
+from typing import List
 
 
-def get_project_root():
-    """Get the project root directory. 获取项目根目录。"""
-    try:
-        result = subprocess.run(
-            ['git', 'rev-parse', '--show-toplevel'],
-            capture_output=True, text=True,
-            cwd=os.path.dirname(os.path.abspath(__file__))
-        )
-        root = result.stdout.strip()
-        if root:
-            return root
-    except Exception:
-        pass
-
-    current = os.path.dirname(os.path.abspath(__file__))
-    for _ in range(10):
-        if os.path.exists(os.path.join(current, '.git')):
-            return current
-        parent = os.path.dirname(current)
-        if parent == current:
-            break
-        current = parent
-
-    return os.getcwd()
-
-
-def get_staged_files(project_root):
-    """Get staged files. 获取暂存的文件。"""
+def get_staged_files() -> List[str]:
+    """Get staged C/C++ files. 获取暂存的 C/C++ 文件。"""
     try:
         result = subprocess.run(
             ['git', 'diff', '--cached', '--name-only', '--diff-filter=ACM'],
-            capture_output=True, text=True,
-            cwd=project_root
+            capture_output=True, text=True
         )
-        return [f for f in result.stdout.splitlines() if f.endswith(('.c', '.h', '.cpp', '.hpp'))]
+        return [f for f in result.stdout.splitlines()
+                if f.endswith(('.c', '.h', '.cpp', '.hpp'))]
     except Exception:
         return []
 
 
-def check_public_interface_comments(content, filename):
-    """Check public interfaces have comments. 检查公共接口是否有注释。"""
+def has_comment_before(lines: List[str], idx: int, max_lines: int = 3) -> bool:
+    """
+    Check if there is a comment within `max_lines` before `idx`.
+    检查在 `idx` 之前 `max_lines` 行内是否有注释。
+    """
+    for j in range(max(0, idx - max_lines), idx):
+        stripped = lines[j].strip()
+        if stripped.startswith('//') or stripped.startswith('/*') or stripped.endswith('*/'):
+            return True
+        # Multi‑line comment continuation
+        if '/*' in stripped or '*/' in stripped:
+            return True
+    return False
+
+
+def check_file(content: str, filename: str) -> List[str]:
+    """Check a single file for missing comments. 检查单个文件是否缺少注释。"""
     errors = []
     lines = content.split('\n')
-
-    func_decl = re.compile(r'^[a-zA-Z_][\w\s\*]+\s+([a-zA-Z_]\w*)\s*\([^)]*\)\s*;')
-    class_decl = re.compile(r'^class\s+([a-zA-Z_]\w*)\s*\{')
-    struct_decl = re.compile(r'^struct\s+([a-zA-Z_]\w*)\s*\{')
-
+    # Remove C‑style block comments for easier detection (but we also check comments)
+    # We'll iterate lines and detect comments as we go.
     for i, line in enumerate(lines):
         stripped = line.strip()
+        # Skip empty, preprocessor, and #include lines
+        if not stripped or stripped.startswith('#'):
+            continue
 
-        if func_decl.match(stripped):
-            has_comment = False
-            for j in range(max(0, i - 3), i):
-                if '//' in lines[j] or '/*' in lines[j]:
-                    has_comment = True
-                    break
-            if not has_comment:
-                errors.append(
-                    f"  ❌ Line {i+1}: Public function declaration missing comment. "
-                    f"第 {i+1} 行：公共函数声明缺少注释。"
-                )
+        # Detect function declaration: return type + name + (params) + { or ;
+        # This regex is conservative; it matches most C/C++ function declarations.
+        if re.match(r'^(extern\s+)?[a-zA-Z_][\w\s\*]+\s+[a-zA-Z_]\w*\s*\([^)]*\)\s*(const\s*)?(override\s*)?(final\s*)?(;\s*$|\s*\{)', stripped):
+            if not has_comment_before(lines, i):
+                errors.append(f"  ❌ Line {i+1}: Public function declaration missing comment.")
 
-        if class_decl.match(stripped) or struct_decl.match(stripped):
-            has_comment = False
-            for j in range(max(0, i - 3), i):
-                if '//' in lines[j] or '/*' in lines[j]:
-                    has_comment = True
-                    break
-            if not has_comment:
-                errors.append(
-                    f"  ❌ Line {i+1}: Class/struct definition missing comment. "
-                    f"第 {i+1} 行：类/结构体定义缺少注释。"
-                )
+        # Detect class/struct definition
+        if re.match(r'^(class|struct)\s+[a-zA-Z_]\w*\s*(\{|\s*:)', stripped):
+            if not has_comment_before(lines, i):
+                errors.append(f"  ❌ Line {i+1}: Class/struct definition missing comment.")
 
     return errors
 
 
 def main():
     """Main entry point. 主入口。"""
-    project_root = get_project_root()
+    # Get project root
     try:
-        os.chdir(project_root)
+        root = subprocess.run(['git', 'rev-parse', '--show-toplevel'],
+                              capture_output=True, text=True).stdout.strip()
     except Exception:
-        pass
+        root = os.getcwd()
+    os.chdir(root)
 
-    files = get_staged_files(project_root)
+    files = get_staged_files()
     if not files:
-        print("✅ No staged files. 没有暂存的文件。")
+        print("✅ No staged C/C++ files. 没有暂存的 C/C++ 文件。")
         return 0
 
     has_error = False
-
     for fname in files:
-        full_path = os.path.join(project_root, fname)
+        full_path = os.path.join(root, fname)
         try:
             with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
         except Exception:
             continue
 
-        errors = check_public_interface_comments(content, fname)
-
+        errors = check_file(content, fname)
         if errors:
             has_error = True
             print(f"\n📄 {fname}:")
