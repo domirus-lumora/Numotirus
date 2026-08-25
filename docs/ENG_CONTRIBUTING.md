@@ -6,14 +6,14 @@ Thanks for considering contributing. This is not a "help us" project. This is a 
 
 | Module | Status | Notes |
 | -------- | -------- | ------- |
-| `core/crypto` | ✅ Complete | C API, X25519 + XChaCha20-Poly1305 + ECIES |
-| `core/p2p` | ✅ Complete | UDP + KCP + non-blocking select, cross-platform |
-| `core/protocol` (Noise) | ✅ Complete | Noise XX handshake + SAS generation + TOFU |
-| `p2p_chat.c` | ✅ Working | Command line chat example |
+| `core/crypto` | 🔄 In progress | C API, X25519 + XChaCha20-Poly1305 + ECIES |
+| `core/p2p` | ❌ Pending | UDP + KCP + non-blocking select, cross-platform |
+| `core/protocol` (Noise) | ❌ Pending | Noise XX handshake + SAS generation + TOFU |
+| `p2p_chat.c` | ❌ Pending | Command line chat example |
 | `core/plugin` | ❌ Pending | Plugin system |
 | GUI | ❌ Pending | Avalonia (C#) |
 
-**Next steps where you can help**: NAT traversal, GUI prototype, Lumora integration.
+**Next steps where you can help**: P2P, Noise protocol, NAT traversal, GUI prototype, AI integration.
 
 ## Issues
 
@@ -75,7 +75,7 @@ Core languages: **C11 + C++20**
 - Comments: English first, then Chinese. Format: `// English text. 中文文本。`
 - AI-generated code: Allowed, but you must understand every line, test yourself, and declare in PR
 
-Full guide: see [`CODING_STYLE.md`](docs/ENG_CODING_STYLE.md)
+Full guide: see [`CODING_STYLE.md`](./ENG_CODING_STYLE.md)
 
 ## Code of Conduct
 

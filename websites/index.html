@@ -7,7 +7,7 @@
     <meta name="description" content="Numotirus 是一个去中心化通信协议。不是平台，不是服务。你持有密钥，你建立连接。" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="./css/style.css" />
     <link rel="icon" type="image/png" href="images/Corvus_avatar.png" />
 </head>
 <body>
@@ -86,27 +86,27 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td><span class="status-badge in-progress">🔄 全力开发中</span></td>
                         <td>加密层 (X25519 + XChaCha20-Poly1305)</td>
                         <td><div class="progress-bar"></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td><span class="status-badge pending">⏳ 待开发</span></td>
                         <td>P2P 网络层 (UDP + KCP)</td>
                         <td><div class="progress-bar"></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td><span class="status-badge pending">⏳ 待开发</span></td>
                         <td>密钥交换 (ZRTP + SAS 验证)</td>
                         <td><div class="progress-bar"></div></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge done">✅ 已完成</span></td>
+                        <td><span class="status-badge pending">⏳ 待开发</span></td>
                         <td>DHT 节点发现</td>
                         <td><div class="progress-bar"></div></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge in-progress">🔄 开发中</span></td>
+                        <td><span class="status-badge pending">⏳ 待开发</span></td>
                         <td>NAT 穿透</td>
                         <td><div class="progress-bar"></div></td>
                     </tr>
@@ -122,7 +122,7 @@
                     </tr>
                 </tbody>
             </table>
-            <p class="progress-note">项目开始于 2026 年 6 月 1 日 · 21 天核心协议完成</p>
+            <p class="progress-note">项目开始于 2026 年 6 月 1 日</p>
         </div>
     </section>
 
@@ -144,7 +144,7 @@
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">不会编程能用吗？</div>
-                    <div class="qna-a">目前需要编译。未来神霁（AI 虚拟主播）会提供 GUI 安装包。</div>
+                    <div class="qna-a">目前需要编译。未来社区可能会提供 GUI 安装包。</div>
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">有些国家 16 岁以下不能用社媒，你们怎么合规？</div>
@@ -152,7 +152,7 @@
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">我现在就能用吗？</div>
-                    <div class="qna-a">能。你需要在电脑上编译代码，然后通过命令行运行。目前版本支持在同一局域网内收发加密消息。NAT 穿透完成后，你可以在不同网络之间直接通信。</div>
+                    <div class="qna-a">目前还不能，但您可以先用这个行业的最佳实践。</div>
                 </div>
             </div>
         </div>
@@ -195,6 +195,11 @@
                     <p>不会 C++？用 Python、Go、Rust 写原型，提到 SKILL 分支。</p>
                 </div>
                 <div class="card">
+                    <i class="fas fa-code-branch"></i>
+                    <h3>DETAILED 分支</h3>
+                    <p>想学习如何从零制作一个类似的软件？参看DETAILED分支的详细注释，必定让你脑袋赚得盆满钵满！</p>
+                </div>
+                <div class="card">
                     <i class="fas fa-language"></i>
                     <h3>翻译 / 文档</h3>
                     <p>中英双语文档需要维护。不会写代码也能参与。</p>
@@ -221,6 +226,6 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="./js/script.js"></script>
 </body>
 </html>

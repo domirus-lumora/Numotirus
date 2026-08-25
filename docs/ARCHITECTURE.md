@@ -13,10 +13,10 @@
 
 | 层级 | 目录 | 语言 | 职责 | 状态 |
 | ------ | ------ | ------ | ------ | ------ |
-| **应用层** | `cli/`, `p2p_chat.c` | C++ / C | 命令行测试工具 | ✅ 可运行 |
-| **协议层** | `core/protocol/` | C++ | Noise XX 握手、SAS 验证 | ✅ 已完成 |
-| **网络层** | `core/p2p/` | C | UDP + KCP 可靠传输，跨平台 | ✅ 已完成 |
-| **加密层** | `core/crypto/` | C | X25519 + XChaCha20-Poly1305 + ECIES | ✅ 已完成 |
+| **加密层** | `core/crypto/` | C | X25519 + XChaCha20-Poly1305 + ECIES | 🔄 开发中 |
+| **协议层** | `core/protocol/` | C++ | Noise XX 握手、SAS 验证 | ❌ 待实现 |
+| **网络层** | `core/p2p/` | C | UDP + KCP 可靠传输，跨平台 | ❌ 待实现 |
+| **应用层** | `cli/`, `p2p_chat.c` | C++ / C | 命令行测试工具 | ❌ 待实现 |
 | **插件层** | `core/plugin/` | C (ABI) | 动态加载扩展 | ❌ 待实现 |
 | **GUI 层** | `gui/` | C# / Avalonia | 跨平台图形界面 | ❌ 待实现 |
 
@@ -24,7 +24,7 @@
 
 ### 加密层 (`core/crypto/`)
 
-**状态**：✅ 稳定，提供 `crypto_c.h` C 接口。
+**状态**：🔄开发中
 
 **功能**：
 
@@ -35,18 +35,11 @@
 
 **依赖**：`libsodium`
 
-```c
-// 使用示例
-CryptoKeypair* kp = crypto_keypair_generate();
-crypto_encrypt_public(plain, len, peer_pubkey, &cipher, &clen);
-crypto_decrypt_private(cipher, clen, my_seckey, &plain, &plen);
-```
-
 ---
 
 ### 网络层 (`core/p2p/`)
 
-**状态**：✅ 已完成，基于 KCP + select 实现。
+**状态**：🔄开发中
 
 **功能**：
 
@@ -54,19 +47,13 @@ crypto_decrypt_private(cipher, clen, my_seckey, &plain, &plen);
 - `select()` 非阻塞接收，线程安全退出
 - 跨平台（Windows/Linux）
 
-```c
-// 使用示例
-P2PNode* node = p2p_create(8888);
-p2p_set_peer_key(node, peer_pubkey);
-p2p_start(node);
-p2p_send(node, "127.0.0.1", 8888, (uint8_t*)"hello", 5);
-```
+**依赖**：`kcp`（submodule）
 
 ---
 
 ### 协议层 (`core/protocol/`)
 
-**状态**：✅ Noise 协议握手已完成。
+**状态**：：🔄开发中
 
 **功能**：
 
@@ -74,15 +61,6 @@ p2p_send(node, "127.0.0.1", 8888, (uint8_t*)"hello", 5);
 - X25519 密钥交换
 - SAS（短认证字符串）生成与比对
 - 信任存储（TOFU）
-
-```cpp
-// 使用示例
-NoiseSession session;
-session.SetKeyPair(kp);
-session.SetPeerPublic(peer_pub);
-auto err = session.Handshake(true, write_cb, read_cb);
-std::string sas = session.GetSas();
-```
 
 **依赖**：`noise-cpp`（submodule）
 
@@ -103,7 +81,7 @@ typedef struct {
 int numo_plugin_register(const NumoPlugin* plugin);
 ```
 
-**已规划插件**：神霁 (Lumora) AI 助手。
+**已规划插件**：轻量级本地 AI 助手、盖格计数器支持、全球地图预览。
 
 ---
 
@@ -112,14 +90,13 @@ int numo_plugin_register(const NumoPlugin* plugin);
 ```text
 numotirus/
 ├── core/
-│   ├── crypto/           ✅ 加密模块
-│   ├── p2p/              ✅ P2P 网络层（KCP + select）
-│   ├── protocol/         ✅ Noise 协议
+│   ├── crypto/           🔄 加密模块
+│   ├── p2p/              ❌ P2P 网络层（KCP + select）
+│   ├── protocol/         ❌ Noise 协议
 │   ├── plugin/           ❌ 待实现
-│   └── CMakeLists.txt
 ├── legacy/
 │   └── yx/               ✅ yx 原始 P2P 实现存档
-├── p2p_chat.c            ✅ 命令行聊天示例
+│   └── domirus-lumora/   ✅ P2P 实现、ZRTP 草案
 ├── docs/
 │   └── ARCHITECTURE.md   ✅ 本文档
 └── websites/             ✅ 项目官网
@@ -129,24 +106,25 @@ numotirus/
 
 | 模块 | 完成度 | 说明 |
 | ------ | -------- | ------ |
-| `core/crypto` | 100% | C API，稳定 |
-| `core/p2p` | 100% | KCP + select，跨平台 |
-| `core/protocol` (Noise) | 100% | Noise XX + SAS + TOFU |
-| `p2p_chat.c` | 90% | 命令行示例，SAS 验证已实现 |
+| `core/crypto` | 20% | 全力开发中 |
+| `core/p2p` | 0% | KCP + select，跨平台 |
+| `core/protocol` (Noise) | 0% | Noise XX + SAS + TOFU |
+| `p2p_chat.c` | 0% | 命令行示例 |
 | `core/plugin` | 0% | 待实现 |
 | GUI | 0% | 待实现 |
 
 ## 下一步优先级
 
-1. **NAT 穿透** —— UPnP / 去中心化中继
-2. **GUI 原型** —— Avalonia + C FFI
-3. **神霁插件** —— Python FFI 集成
+1. **P2P 核心代码** —— 挑战局域网连接
+2. **Noise 协议** —— 安全交换密钥
+3. **P2P 命令行测试** —— 确保方向没有偏差
+4. **NAT 穿透** —— UPnP / 去中心化中继
+5. **GUI 原型** —— Avalonia + C FFI
+6. **神霁插件** —— Python FFI 集成
 
 ## 贡献指南
 
-- **核心代码**：C11 / C++20，通过 `clang-format`
-- **双语注释**：英文在前，中文在后
-- **AI 使用**：允许，但必须理解每一行
+参看[这份代码规范文档](./CODING_STYLE.md)和[协作指南](./CONTRIBUTING.md)。
 
 ## 许可证
 

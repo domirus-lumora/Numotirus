@@ -8,14 +8,14 @@
 
 | 模块 | 状态 | 说明 |
 | ------ | ------ | ------ |
-| `core/crypto` | ✅ 已完成 | C API，X25519 + XChaCha20-Poly1305 + ECIES |
-| `core/p2p` | ✅ 已完成 | UDP + KCP + select 非阻塞，跨平台 |
-| `core/protocol` (Noise) | ✅ 已完成 | Noise XX 握手 + SAS 生成 + TOFU |
-| `p2p_chat.c` | ✅ 可运行 | 命令行聊天示例 |
+| `core/crypto` | 🔄 开发中 | C API，X25519 + XChaCha20-Poly1305 + ECIES |
+| `core/p2p` | ❌ 待实现 | UDP + KCP + select 非阻塞，跨平台 |
+| `core/protocol` (Noise) | ❌ 待实现 | Noise XX 握手 + SAS 生成 + TOFU |
+| `p2p_chat.c` | ❌ 待实现 | 命令行聊天示例 |
 | `core/plugin` | ❌ 待实现 | 插件系统 |
 | GUI | ❌ 待实现 | Avalonia (C#) |
 
-**下一步需要你**：NAT 穿透、GUI 原型、神霁集成。
+**下一步需要你**：P2P草案、Noise 协议框架、NAT 穿透、GUI 原型、神霁集成。
 
 ## Issue 提交
 
@@ -75,7 +75,7 @@
 - 代码注释：英文在前，中文在后，格式 `// English text. 中文文本。`
 - AI 生成代码：允许，但必须理解每一行、自己测试、PR 中声明
 
-完整规范见 [`CODING_STYLE.md`](docs/CODING_STYLE.md)
+完整规范见 [`CODING_STYLE.md`](./CODING_STYLE.md)
 
 ## 行为准则
 

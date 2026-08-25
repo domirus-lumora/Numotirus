@@ -27,6 +27,7 @@ p2p_chat_debug.exe
 
 # IDE
 .vscode/
+.vs/
 .idea/
 *.swp
 *.swo

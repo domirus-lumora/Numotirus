@@ -13,10 +13,10 @@ This document is for developers who want to understand or contribute to the core
 
 | Layer | Directory | Language | Responsibility | Status |
 | ------- | ----------- | ---------- | ---------------- | -------- |
+| **Crypto** | `core/crypto/` | C | X25519 + XChaCha20-Poly1305 + ECIES | 🔄 In progress |
+| **Protocol** | `core/protocol/` | C++ | Noise XX handshake, SAS verification | ❌ Pending |
+| **Network** | `core/p2p/` | C | UDP + KCP reliable transport, cross-platform | ❌ Pending |
 | **Application** | `cli/`, `p2p_chat.c` | C++ / C | CLI test tool | ✅ Working |
-| **Protocol** | `core/protocol/` | C++ | Noise XX handshake, SAS verification | ✅ Complete |
-| **Network** | `core/p2p/` | C | UDP + KCP reliable transport, cross-platform | ✅ Complete |
-| **Crypto** | `core/crypto/` | C | X25519 + XChaCha20-Poly1305 + ECIES | ✅ Complete |
 | **Plugin** | `core/plugin/` | C (ABI) | Dynamic plugin loading | ❌ Pending |
 | **GUI** | `gui/` | C# / Avalonia | Cross-platform GUI | ❌ Pending |
 
@@ -24,7 +24,7 @@ This document is for developers who want to understand or contribute to the core
 
 ### Crypto Layer (`core/crypto/`)
 
-**Status**: ✅ Stable, provides `crypto_c.h` C interface.
+**Status**: 🔄 In progress
 
 **Features**:
 
@@ -35,18 +35,11 @@ This document is for developers who want to understand or contribute to the core
 
 **Dependency**: `libsodium`
 
-```c
-// Usage example
-CryptoKeypair* kp = crypto_keypair_generate();
-crypto_encrypt_public(plain, len, peer_pubkey, &cipher, &clen);
-crypto_decrypt_private(cipher, clen, my_seckey, &plain, &plen);
-```
-
 ---
 
 ### Network Layer (`core/p2p/`)
 
-**Status**: ✅ Complete, based on KCP + select implementation.
+**Status**: ❌ Pending
 
 **Features**:
 
@@ -54,35 +47,17 @@ crypto_decrypt_private(cipher, clen, my_seckey, &plain, &plen);
 - Non-blocking `select()` receive, thread-safe exit
 - Cross-platform (Windows/Linux)
 
-```c
-// Usage example
-P2PNode* node = p2p_create(8888);
-p2p_set_peer_key(node, peer_pubkey);
-p2p_start(node);
-p2p_send(node, "127.0.0.1", 8888, (uint8_t*)"hello", 5);
-```
-
 ---
 
 ### Protocol Layer (`core/protocol/`)
 
-**Status**: ✅ Noise handshake complete.
-
+**Status**: ❌ Pending
 **Features**:
 
 - Noise XX pattern handshake (interactive, identity hiding for both parties)
 - X25519 key exchange
 - SAS (Short Authentication String) generation and verification
 - Trust store (TOFU)
-
-```cpp
-// Usage example
-NoiseSession session;
-session.SetKeyPair(kp);
-session.SetPeerPublic(peer_pub);
-auto err = session.Handshake(true, write_cb, read_cb);
-std::string sas = session.GetSas();
-```
 
 **Dependency**: `noise-cpp` (submodule)
 
@@ -103,7 +78,7 @@ typedef struct {
 int numo_plugin_register(const NumoPlugin* plugin);
 ```
 
-**Planned Plugins**: Lumora (Shenji) AI assistant.
+**Planned Plugins**: Light AI assistant, Geiger counter support, Global map preview.
 
 ---
 
@@ -112,14 +87,13 @@ int numo_plugin_register(const NumoPlugin* plugin);
 ```text
 numotirus/
 ├── core/
-│   ├── crypto/           ✅ Crypto module
-│   ├── p2p/              ✅ P2P network layer (KCP + select)
-│   ├── protocol/         ✅ Noise protocol
-│   ├── plugin/           ❌ Pending
-│   └── CMakeLists.txt
+│   ├── crypto/           🔄 Crypto module
+│   ├── p2p/              ❌ P2P network layer (KCP + select)
+│   ├── protocol/         ❌ Noise protocol
+│   └── plugin/           ❌ Pending
 ├── legacy/
-│   └── yx/               ✅ yx's original P2P implementation archive
-├── p2p_chat.c            ✅ CLI chat example
+│   |── yx/               ✅ yx's original P2P implementation archive
+|   └── domirus-lumora/   ✅ P2P's code (outdated) and ZRTP
 ├── docs/
 │   └── ARCHITECTURE.md   ✅ This document
 └── websites/             ✅ Project website
@@ -129,24 +103,25 @@ numotirus/
 
 | Module | Completion | Notes |
 | --------- | ------------ | ------- |
-| `core/crypto` | 100% | C API, stable |
-| `core/p2p` | 100% | KCP + select, cross-platform |
-| `core/protocol` (Noise) | 100% | Noise XX + SAS + TOFU |
-| `p2p_chat.c` | 90% | CLI example, SAS verification implemented |
+| `core/crypto` | 20% | In progress |
+| `core/p2p` | 0% | KCP + select, cross-platform |
+| `core/protocol` (Noise) | 0% | Noise XX + SAS + TOFU |
+| `p2p_chat.c` | 0% | CLI example, SAS verification implemented |
 | `core/plugin` | 0% | Pending |
 | GUI | 0% | Pending |
 
 ## Next Steps (Priority Order)
 
-1. **NAT traversal** — UPnP / decentralized relay
-2. **GUI prototype** — Avalonia + C FFI
-3. **Lumora plugin** — Python FFI integration
+1. **P2P's code** —— Connect with people who are in same WiFi
+2. **Noise protocol** —— Exchange the key securely
+3. **P2P CLI test** —— Test the P2P's function
+4. **NAT** —— UPnP / Centreless connect
+5. **GUI** —— Avalonia + C FFI
+6. **Light AI extension** —— Python FFI integrate
 
 ## Contribution Guide
 
-- **Core code**: C11 / C++20, pass `clang-format`
-- **Bilingual comments**: English first, Chinese after
-- **AI usage**: Allowed, but you must understand every line
+See these two document to know: [Coding](./ENG_CODING_STYLE.md) and [Contributing Rules](./ENG_CONTRIBUTING.md)
 
 ## License
 

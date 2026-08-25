@@ -7,7 +7,7 @@
     <meta name="description" content="Numotirus is a decentralized communication protocol. Not a platform, not a service. You hold your keys, you build connections." />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./css/style.css" />
     <link rel="icon" type="image/png" href="images/Corvus_avatar.png" />
 </head>
 <body>
@@ -86,27 +86,27 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td><span class="status-badge in-progress">🔄 In progress</span></td>
                         <td>Crypto (X25519 + XChaCha20-Poly1305)</td>
                         <td><div class="progress-bar"></div></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td><span class="status-badge pending">⏳ Pending</span></td>
                         <td>P2P Network (UDP + KCP)</td>
                         <td><div class="progress-bar"></div></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td><span class="status-badge pending">⏳ Pending</span></td>
                         <td>Key Exchange (ZRTP + SAS)</td>
                         <td><div class="progress-bar">div></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge done">✅ Done</span></td>
+                        <td><span class="status-badge pending">⏳ Pending</span></td>
                         <td>DHT Node Discovery</td>
                         <td><div class="progress-bar"></div></div></td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge in-progress">🔄 In Progress</span></td>
+                        <td><span class="status-badge pending">⏳ Pending</span></td>
                         <td>NAT Traversal</td>
                         <td><div class="progress-bar"></div></div></td>
                     </tr>
@@ -144,7 +144,7 @@
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">Can non-programmers use it?</div>
-                    <div class="qna-a">Currently requires compilation. In the future, Lumora (AI VTuber) will provide a GUI installer.</div>
+                    <div class="qna-a">Currently requires compilation. In the future, community member might provide a GUI installer.</div>
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">How do you comply with social media age restrictions?</div>
@@ -152,7 +152,7 @@
                 </div>
                 <div class="qna-item">
                     <div class="qna-q">Can I use it right now?</div>
-                    <div class="qna-a">Yes. Compile the code and run it from the command line. Current version works on the same local network. After NAT traversal, you can communicate across different networks.</div>
+                    <div class="qna-a">No, you can't. But you can try to use best practices, such as Signal. We don't do better than them, at least now we don't.</div>
                 </div>
             </div>
         </div>
@@ -195,6 +195,11 @@
                     <p>Don't know C++? Write prototypes in Python, Go, Rust. Submit to SKILL branch.</p>
                 </div>
                 <div class="card">
+                    <i class="fas fa-code-branch"></i>
+                    <h3>DETAILED Branch</h3>
+                    <p>This branch contain many comment of code, it can let you more understand how Numotirus works, even better, you might write your own version.</p>
+                </div>
+                <div class="card">
                     <i class="fas fa-language"></i>
                     <h3>Translation / Docs</h3>
                     <p>Bilingual documentation needs maintainers. No coding required.</p>
@@ -221,6 +226,6 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="./js/script.js"></script>
 </body>
 </html>
