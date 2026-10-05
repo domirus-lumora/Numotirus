@@ -1,69 +1,46 @@
-# GitHub Actions workflow for code quality checks. GitHub Actions 代码质量检查工作流。
+# GitHub Actions workflow for code quality checks.
+# GitHub Actions 代码质量检查工作流。
+
 name: Code Quality Check
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
 
 jobs:
   quality:
-    name: Check C/C++ Code Quality. 检查 C/C++ 代码质量。
+    name: Check Code Quality. 检查代码质量。
     runs-on: ubuntu-latest
 
     steps:
+
+      # Checkout repository. 检出仓库。
       - name: Checkout code. 检出代码。
         uses: actions/checkout@v4
 
+
+      # Install required tools. 安装所需工具。
       - name: Install dependencies. 安装依赖。
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format clang-tidy cppcheck python3-pip
-          pip3 install pre-commit
+          sudo apt-get install -y clang-tidy python3-pip
+          python3 -m pip install --user pre-commit
 
-      - name: Run clang-format. 运行 clang-format。
+
+      # Generate compilation database.
+      # 生成编译数据库。
+      - name: Generate compile_commands.json. 生成编译数据库。
         run: |
-          find . \( -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) \
-            ! -path "./legacy/*" \
-            ! -path "./old/*" \
-            ! -path "./third_party/*" \
-            ! -path "./deps/*" \
-            ! -path "./core/p2p/kcp/*" \
-            ! -path "./core/protocol/noise-cpp/*" \
-            -exec clang-format --style=file --dry-run --Werror {} +
+          python3 .github/CodeCheck/scripts/generate_compile_commands.py
 
-      - name: Run clang-tidy (C++). 运行 clang-tidy（C++）。
+
+      # Run the complete CodeCheck configuration.
+      # 运行完整的 CodeCheck 配置。
+      - name: Run CodeCheck. 运行 CodeCheck。
         run: |
-          find . \( -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.hh" \) \
-            ! -path "./legacy/*" \
-            ! -path "./old/*" \
-            ! -path "./third_party/*" \
-            ! -path "./deps/*" \
-            ! -path "./core/p2p/kcp/*" \
-            ! -path "./core/protocol/noise-cpp/*" \
-            -exec clang-tidy --config-file=.clang-tidy {} -- \;
-        continue-on-error: false
-
-      - name: Run cppcheck (C). 运行 cppcheck（C）。
-        run: |
-          C_FILES=$(find . -name "*.c" ! -path "./legacy/*" ! -path "./old/*" ! -path "./third_party/*" ! -path "./deps/*" ! -path "./core/p2p/kcp/*" ! -path "./core/protocol/noise-cpp/*" | tr '\n' ' ')
-          if [ -n "$C_FILES" ]; then
-            cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem $C_FILES
-          fi
-
-      - name: Run comment style checks. 运行注释规范检查。
-        run: python3 .github/CodeCheck/scripts/check_comment_style.py
-
-      - name: Run L10N format checks. 运行 L10N 占位符格式检查。
-        run: python3 .github/CodeCheck/scripts/check_l10n.py
-
-      - name: Check for debug code (warning only). 检查调试代码（仅警告）。
-        run: |
-          if grep -r "printf\|cout\|console\.log\|debugger" \
-            --include="*.c" --include="*.cpp" --include="*.h" --include="*.hpp" . 2>/dev/null; then
-            echo "⚠️  Warning: Debug code found in the above files. 警告：上述文件中发现调试代码。"
-          else
-            echo "✅ No debug code found. 未发现调试代码。"
-          fi
+          pre-commit run \
+            --config .github/CodeCheck/.pre-commit-config.yaml \
+            --all-files

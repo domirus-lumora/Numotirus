@@ -108,7 +108,7 @@ tl::expected<SecretKey, CryptoError> SecretKey::from_bytes(std::span<const uint8
         return tl::unexpected(CryptoError::kInvalidSecretKey);
     }
     return s_key;
-    
+
 }
 
 /// ECDH shared secret (32 bytes) — cleared with sodium_memzero
@@ -119,7 +119,7 @@ SharedSecret::SharedSecret() noexcept {
 
 SharedSecret::SharedSecret(SharedSecret&& other) noexcept{
     std::copy(other.begin(),other.end(),this->begin());
-    secure_zero(other);    
+    secure_zero(other);
 }
 
 SharedSecret& SharedSecret::operator=(SharedSecret&& other) noexcept {
@@ -255,7 +255,7 @@ std::string to_hex(std::span<const uint8_t> data) {
 //  公钥验证
 bool validate_public_key(const PublicKey& key) noexcept {
     if (!sodium_is_zero(key.data(),key.size())) return true;
-    
+
     return false;
 }
 
@@ -266,11 +266,11 @@ tl::expected<KeyPair, CryptoError> [[nodiscard]] generate_keypair() noexcept {
     PublicKey public_key;
     SecretKey secret_key;
     int result = crypto_kx_keypair(public_key.data(), secret_key.data());
-   
+
     if (result != 0) return tl::unexpected(CryptoError::kKeyPairGenerationFailed);
     if (!validate_public_key(public_key)) return tl::unexpected(CryptoError::kInvalidPublicKey);
     if (sodium_is_zero(secret_key.data(),secret_key.size())) return tl::unexpected(CryptoError::kInvalidSecretKey);
-    
+
     KeyPair keypair(public_key,std::move(secret_key));
     return keypair;
 }
@@ -347,9 +347,9 @@ hmac_blake2b(
 
     std::vector<uint8_t> k_opad(128,opad); // k_opad = (k' XOR opad) || inner
     std::vector<uint8_t> k_ipad(128,ipad); // k_ipad = (k' XOR ipad) || message
-    
+
     size_t i = 0;
-    while (i<key.size()) 
+    while (i<key.size())
     {
        k_ipad[i] = key[i] ^ ipad;
         i++;
@@ -364,7 +364,7 @@ hmac_blake2b(
         return tl::unexpected(CryptoError::kDerivationFailed);
     }
     result = 0;
-    while (i<key.size()) 
+    while (i<key.size())
     {
        k_opad[i] = key[i] ^ opad;
         i++;

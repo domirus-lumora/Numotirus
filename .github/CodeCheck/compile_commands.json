@@ -1,0 +1,7 @@
+[
+    {
+        "directory": ".",
+        "command": "g++ -std=c++20 -Icore/ -c core/crypto/crypto.cpp -o crypto.o",
+        "file": "core/crypto/crypto.cpp"
+    }
+]
