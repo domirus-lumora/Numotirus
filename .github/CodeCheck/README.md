@@ -1,32 +1,36 @@
 # 代码质量检查
 
-本项目使用两种方式自动检查 C11 / C++20 代码规范。
+本项目使用两种方式自动检查 C11 / C++20 代码质量。
 
 ---
 
 ## 方案一：GitHub Actions（CI/CD）
 
-每次 `push` 或 `pull_request` 时自动运行，强制检查所有贡献者的代码。
+每次 `push` 或 `pull_request` 时自动运行，在远程环境中检查项目代码。
 
 **优点：**
 
 - 远程运行，无需本地安装
-- 所有 PR 自动检查，不通过无法合并
+- 所有 PR 都可以自动检查
 - 检查结果在 PR 页面可见
 
 **配置文件：** `.github/workflows/code-quality.yml`
+
+在运行 CodeCheck 前，GitHub Actions 会自动扫描 `core/` 下的 `.cpp` 文件，并生成 `compile_commands.json`。
 
 ---
 
 ## 方案二：Pre-commit 本地钩子
 
-提交代码前在本地运行，即时反馈，避免提交后再等 CI 报错。
+如果安装了 Git Hook，则会在每次 commit 前在本地运行，能够在 push 之前即时发现问题。
 
 **优点：**
 
 - 提交前即时反馈
 - 节省 CI 资源
 - 可配合 IDE 使用
+
+Pre-commit **不一定要安装为 Git Hook**，也可以在需要时手动运行。
 
 ---
 
@@ -44,6 +48,8 @@ pip install pre-commit
 pre-commit install
 ```
 
+安装后，每次创建 commit 时，Pre-commit 都会自动运行。
+
 ### 3. （可选）安装 pre-push 钩子
 
 ```bash
@@ -57,20 +63,34 @@ pre-commit install --hook-type pre-push
 ### 检查所有文件
 
 ```bash
-pre-commit run --all-files
+pre-commit run --config .github/CodeCheck/.pre-commit-config.yaml --all-files
 ```
 
 ### 只检查暂存文件
 
 ```bash
-pre-commit run
+pre-commit run --config .github/CodeCheck/.pre-commit-config.yaml
 ```
 
 ### 只检查特定文件
 
 ```bash
-pre-commit run --files core/crypto/crypto.c
+pre-commit run --config .github/CodeCheck/.pre-commit-config.yaml --files core/crypto/crypto.cpp
 ```
+
+### 生成 compile_commands.json
+
+```bash
+python3 .github/CodeCheck/scripts/generate_compile_command.py
+```
+
+该脚本会扫描 `core/` 下的 `.cpp` 文件，并更新：
+
+```text
+.github/CodeCheck/compile_commands.json
+```
+
+第三方依赖以及被排除的目录不会加入 compilation database。
 
 ---
 
@@ -80,11 +100,17 @@ pre-commit run --files core/crypto/crypto.c
 git commit --no-verify
 ```
 
-或
+或：
 
 ```bash
 git commit -n
 ```
+
+这两个选项会跳过本地 Git Hooks，包括已经安装的 Pre-commit Hook。
+
+**它们不会跳过 GitHub Actions。**
+
+如果没有安装 Pre-commit Git Hook，则 `git commit` 本身不会自动运行 Pre-commit，因此自然也就没有本地检查需要跳过。
 
 ---
 
@@ -92,14 +118,18 @@ git commit -n
 
 | 检查项 | 工具/脚本 | 说明 |
 | ------ | --------- | ---- |
-| 代码格式化 | `clang-format` | 基于 Google 风格，缩进 4 空格，列宽 100 |
-| C++ 静态分析 | `clang-tidy` | 检查 C++ 核心准则、现代 C++ 写法 |
-| C 静态分析 | `cppcheck` | 检查 C 代码中的潜在 bug |
-| C 编码规范 | `check_c_coding_style.py` | 错误码约定、内存管理、include 顺序、命名 |
-| C++ 编码规范 | `check_cpp_coding_style.py` | 命名规范、禁止项检查 |
-| 注释规范 | `check_comment_style.py` | 公共接口必须有注释 |
-| L10N 占位符 | `check_l10n.py` | `// * L10N_PENDING [...] *` 格式检查 |
-| AI 使用声明 | `check_ai_declaration.py` | PR 描述中声明 AI 生成代码 |
+| C++ 静态分析 | `clang-tidy` | C++ 静态分析及现代 C++ 检查 |
+| 注释规范 | `check_comment_style.py` | 检查注释规范及公共接口文档 |
+| L10N 占位符 | `check_l10n.py` | 检查 `// * L10N_PENDING [...] *` 占位符格式 |
+| 第三方依赖 | `check_dependencies.py` | 扫描项目文件中的第三方依赖使用情况 |
+| 基础文件格式 | `trailing-whitespace` | 清除行尾多余空白 |
+| 文件结尾格式 | `end-of-file-fixer` | 确保文件结尾具有正确的换行 |
+| YAML 语法 | `check-yaml` | 检查 YAML 文件语法 |
+| 大文件检查 | `check-added-large-files` | 防止意外添加过大的文件 |
+| 私钥检查 | `detect-private-key` | 检测可能被意外提交的私钥 |
+| 合并冲突 | `check-merge-conflict` | 检测合并冲突标记 |
+
+当前 CodeCheck 配置**不使用 `clang-format`**。
 
 ---
 
@@ -107,19 +137,27 @@ git commit -n
 
 ### Q: 为什么我的提交被阻止了？
 
-A: 检查脚本发现了不符合规范的代码。查看终端输出中的具体错误信息，修复后重新提交。
+A: 如果已经将 Pre-commit 安装为 Git Hook，则一个或多个检查可能会在 commit 创建之前失败。查看终端输出中的具体错误信息，修复问题后重新提交。
+
+如果某个 hook 自动修改了文件，请检查这些修改，然后重新运行检查。
 
 ### Q: 如何查看具体的错误信息？
 
-A: 错误信息会在终端中彩色显示，包含文件名、行号和具体描述。中英双语提示。
+A: 错误信息会显示在终端中，并指出对应的文件和检查项目。适用的检查会提供中英双语提示。
 
 ### Q: 团队成员需要各自安装吗？
 
-A: 是的，每个开发者的本地环境需要执行一次 `pre-commit install`。GitHub Actions 不需要任何人安装。
+A: 不需要。GitHub Actions 不要求任何人进行本地安装。
+
+如果开发者希望在每次 commit 前自动检查，可以在本地执行一次 `pre-commit install`。
+
+也可以不安装 Git Hook，而是在需要时手动运行 Pre-commit。
 
 ### Q: 可以在 Windows 上使用吗？
 
-A: 可以。脚本使用 Python 3 编写，跨平台兼容。确保已安装 Python 3 和 Git Bash。
+A: 可以。CodeCheck 脚本使用 Python 3 编写，并设计为跨平台运行。
+
+如果需要运行本地检查，请确保已安装 Python 3、Git 和 Pre-commit。
 
 ---
 
@@ -127,4 +165,4 @@ A: 可以。脚本使用 Python 3 编写，跨平台兼容。确保已安装 Pyt
 
 **语言标准**：C11 + C++20
 
-**最后更新**：2026-06-13
+**最后更新**：2026-10-05

@@ -96,7 +96,7 @@ const char* crypto_error_string(CryptoError error) noexcept;
 /// X25519 公钥（固定 32 字节）
 struct PublicKey : std::array<uint8_t, kPublicKeySize> {
     PublicKey() noexcept;
-    
+
     /// Construct from raw bytes (without validation)
     /// Caller should ensure the input is valid, or call validate_public_key() later
     /// 从原始字节构造（不验证）
@@ -378,7 +378,7 @@ hmac_blake2b(
     std::span<const uint8_t> message
 );
 
-[[nodiscard]] tl::expected<std::vector<uint8_t>, CryptoError> derive_key_hkdf( 
+[[nodiscard]] tl::expected<std::vector<uint8_t>, CryptoError> derive_key_hkdf(
     const SharedSecret& shared_secret,
     std::span<const uint8_t> salt,
     std::span<const uint8_t> info,
