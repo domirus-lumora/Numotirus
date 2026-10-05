@@ -34,7 +34,7 @@ jobs:
       # 生成编译数据库。
       - name: Generate compile_commands.json. 生成编译数据库。
         run: |
-          python3 .github/CodeCheck/scripts/generate_compile_commands.py
+          python3 .github/CodeCheck/scripts/generate_compile_command.py
 
 
       # Run the complete CodeCheck configuration.
